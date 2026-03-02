@@ -1,0 +1,45 @@
+{
+  "name": "@peerfolio/privy-near-connect",
+  "version": "0.0.0",
+  "description": "Privy wallet adapter for near-connect",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    "./executor": {
+      "types": "./dist/executor.d.ts",
+      "default": "./dist/executor.js"
+    },
+    "./sign-page": {
+      "types": "./dist/sign-page.d.ts",
+      "default": "./dist/sign-page.js"
+    }
+  },
+  "main": "./dist/executor.js",
+  "types": "./dist/executor.d.ts",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.12.0",
+    "@types/node": "^22.7.8",
+    "eslint": "^9.12.0",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.13.0",
+    "tsup": "^8.3.5",
+    "vitest": "^2.1.4"
+  }
+}
