@@ -19,5 +19,6 @@ output quickly and can emit .d.ts type declarations, handle multiple entry point
 bundles with sourcemaps.
 
 In this scaffold it’s used to build two entry points:
-  - src/executor.ts → dist/executor.js + dist/executor.d.ts
-  - src/sign-page.ts → dist/sign-page.js + dist/sign-page.d.ts
+
+- src/executor.ts → dist/executor.js + dist/executor.d.ts
+- src/sign-page.ts → dist/sign-page.js + dist/sign-page.d.ts

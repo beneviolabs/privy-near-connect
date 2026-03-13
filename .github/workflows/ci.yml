@@ -3,7 +3,7 @@ name: privy-near-connect-ci
 on:
   pull_request:
     paths:
-      - "**"
+      - '**'
 
 jobs:
   checks:
@@ -23,5 +23,7 @@ jobs:
         run: npm run typecheck
       - name: Lint
         run: npm run lint
+      - name: Format check
+        run: npm run format:check
       - name: Test
         run: npm run test

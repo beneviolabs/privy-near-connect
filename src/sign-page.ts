@@ -3,11 +3,14 @@ export type SignPageInitResult<TPayload = unknown, TResult = unknown> = {
   sign: (result?: TResult) => Promise<void>;
 };
 
-export const initPrivySignPage = <TPayload = unknown, TResult = unknown>(): SignPageInitResult<TPayload, TResult> => {
+export const initPrivySignPage = <TPayload = unknown, TResult = unknown>(): SignPageInitResult<
+  TPayload,
+  TResult
+> => {
   return {
     payload: null,
     sign: async () => {
-      throw new Error("initPrivySignPage is not implemented yet.");
-    }
+      throw new Error('initPrivySignPage is not implemented yet.');
+    },
   };
 };
