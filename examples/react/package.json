@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@peerfolio/privy-near-connect": "file:../..",
+    "@privy-io/js-sdk-core": "^0.60.5",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },

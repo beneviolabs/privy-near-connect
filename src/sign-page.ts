@@ -1,9 +1,11 @@
+import type Privy from '@privy-io/js-sdk-core';
+
 import type { ChannelMsg, SigningPayload } from './types.js';
 import {
   AlreadySignedError,
   NoOpenerError,
-  WindowOpenerClosedError,
   TimeoutError,
+  WindowOpenerClosedError,
 } from './sign-page.errors.js';
 
 const DEFAULT_SIGN_REQUEST_TIMEOUT_MS = 30_000;
@@ -26,6 +28,33 @@ export type SignPageSession = {
   /** Signs the payload using Privy and posts the result to the opener exactly once. */
   sign: () => Promise<void>;
 };
+
+function mountPrivyIframe(privy: Privy): Promise<void> {
+  return new Promise((resolve) => {
+    const iframe = document.createElement('iframe');
+    iframe.dataset.privyEmbed = '';
+    iframe.src = privy.embeddedWallet.getURL();
+    iframe.style.display = 'none';
+
+    iframe.addEventListener('load', () => {
+      privy.setMessagePoster({
+        postMessage: (msg, origin, transfer) =>
+          iframe.contentWindow!.postMessage(msg, origin, transfer ? [transfer] : undefined),
+        reload: () => {
+          iframe.src = privy.embeddedWallet.getURL();
+        },
+      });
+      resolve();
+    });
+
+    window.addEventListener('message', (event) => {
+      if (event.source !== iframe.contentWindow) return;
+      privy.embeddedWallet.onMessage(event.data);
+    });
+
+    document.body.appendChild(iframe);
+  });
+}
 
 function waitForOpenerSignRequest(allowedOrigin: string, timeout: number): Promise<SigningPayload> {
   return new Promise((resolve, reject) => {
@@ -51,26 +80,31 @@ function waitForOpenerSignRequest(allowedOrigin: string, timeout: number): Promi
   });
 }
 
-function buildSign(target: string, payload: SigningPayload): () => Promise<void> {
+function buildSign(target: string, privy: Privy, payload: SigningPayload): () => Promise<void> {
   let signed = false;
   return async () => {
     if (signed) throw new AlreadySignedError();
     signed = true;
     if (!window.opener) throw new WindowOpenerClosedError();
-    // TODO: call Privy signing implementation with payload
+    // TODO: call privy.embeddedWallet signing method with payload
     throw new Error('Privy signing is not yet implemented');
   };
 }
 
 /**
- * Initializes the signing page handshake with the opener window.
+ * Mounts the Privy embedded wallet iframe and initializes the signing page
+ * handshake with the opener window.
  *
+ * @param privy - An instantiated and initialized Privy client.
  * @param options - Optional timeout and trusted origin overrides.
  * @returns A session containing the received payload and a `sign` callback.
  * @throws {@link NoOpenerError} If `window.opener` is not available.
  * @throws {@link TimeoutError} If no `SIGN_REQUEST` arrives before timeout.
  */
-export const initSigningPage = async (options?: SignPageOptions): Promise<SignPageSession> => {
+export const initSigningPage = async (
+  privy: Privy,
+  options?: SignPageOptions,
+): Promise<SignPageSession> => {
   if (!window.opener) throw new NoOpenerError();
   if (options?.allowedOrigin === '*') throw new Error(INVALID_ORIGIN_ERROR_MESSAGE);
 
@@ -84,11 +118,13 @@ export const initSigningPage = async (options?: SignPageOptions): Promise<SignPa
   }
   if (!target || target === '*') throw new Error(INVALID_ORIGIN_ERROR_MESSAGE);
 
+  await mountPrivyIframe(privy);
+
   (window.opener as Window).postMessage(READY_MESSAGE, target);
   const payload = await waitForOpenerSignRequest(
     target,
     options?.timeout ?? DEFAULT_SIGN_REQUEST_TIMEOUT_MS,
   );
 
-  return { payload, sign: buildSign(target, payload) };
+  return { payload, sign: buildSign(target, privy, payload) };
 };
