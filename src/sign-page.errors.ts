@@ -15,10 +15,10 @@ export class TimeoutError extends Error {
 }
 
 /** Thrown when `sign` is called after the opener window is no longer available. */
-export class OpenerClosedError extends Error {
+export class WindowOpenerClosedError extends Error {
   constructor() {
     super('window.opener is gone — cannot post RESULT');
-    this.name = 'OpenerClosedError';
+    this.name = 'WindowOpenerClosedError';
   }
 }
 

@@ -2,7 +2,7 @@ import type { ChannelMsg, SigningPayload } from './types.js';
 import {
   AlreadySignedError,
   NoOpenerError,
-  OpenerClosedError,
+  WindowOpenerClosedError,
   TimeoutError,
 } from './sign-page.errors.js';
 
@@ -56,7 +56,7 @@ function buildSign(target: string, payload: SigningPayload): () => Promise<void>
   return async () => {
     if (signed) throw new AlreadySignedError();
     signed = true;
-    if (!window.opener) throw new OpenerClosedError();
+    if (!window.opener) throw new WindowOpenerClosedError();
     // TODO: call Privy signing implementation with payload
     throw new Error('Privy signing is not yet implemented');
   };
@@ -85,7 +85,10 @@ export const initSigningPage = async (options?: SignPageOptions): Promise<SignPa
   if (!target || target === '*') throw new Error(INVALID_ORIGIN_ERROR_MESSAGE);
 
   (window.opener as Window).postMessage(READY_MESSAGE, target);
-  const payload = await waitForOpenerSignRequest(target, options?.timeout ?? DEFAULT_SIGN_REQUEST_TIMEOUT_MS);
+  const payload = await waitForOpenerSignRequest(
+    target,
+    options?.timeout ?? DEFAULT_SIGN_REQUEST_TIMEOUT_MS,
+  );
 
   return { payload, sign: buildSign(target, payload) };
 };
