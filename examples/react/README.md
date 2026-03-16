@@ -18,3 +18,9 @@ npm run dev
 ```
 
 Open the app at http://localhost:5173.
+
+## FAQ and Troubleshooting
+
+- Create `examples/react/.env` with `VITE_PRIVY_APP_ID` and `VITE_PRIVY_APP_CLIENT_ID`.
+- Add `http://localhost:5173` to the allowed origins for your Privy app.
+- The flow opens a popup at `/#sign`, so allow popups locally while testing.
