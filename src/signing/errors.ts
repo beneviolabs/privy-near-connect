@@ -21,3 +21,11 @@ export class UnsupportedSigningPayloadError extends Error {
     this.name = 'UnsupportedSigningPayloadError';
   }
 }
+
+/** Thrown when an optionally verified NEP-413 signature does not match the derived public key. */
+export class SignatureVerificationError extends Error {
+  constructor() {
+    super('NEP-413 signature verification failed');
+    this.name = 'SignatureVerificationError';
+  }
+}

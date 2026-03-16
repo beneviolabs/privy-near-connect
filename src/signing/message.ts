@@ -4,7 +4,8 @@ import { rawSign } from '@privy-io/js-sdk-core';
 import type Privy from '@privy-io/js-sdk-core';
 import type { SignMessageParams, SignedMessage } from '@hot-labs/near-connect';
 
-import { publicKeyFromImplicit, hexSignatureToBytes } from '@/signing/utils';
+import { SignatureVerificationError } from '@/signing/errors';
+import { hexSignatureToBytes, publicKeyFromImplicit, verifySignature } from '@/signing/utils';
 
 /** NEP-413 message schema for Borsh serialization. */
 export const Nep413MessageSchema: Schema = {
@@ -26,13 +27,16 @@ const NEP413_PREFIX = 2147484061;
  * @param walletAddress - The Privy implicit account address.
  * @param privy - Privy instance used for embedded-wallet raw signing.
  * @param walletId - Privy wallet id used by Wallet API raw signing.
+ * @param verify - When `true`, verifies the returned signature against the derived public key before returning.
  * @returns A signed message with accountId, publicKey, and base64 signature.
+ * @throws {@link SignatureVerificationError} If `verify` is `true` and the returned signature is invalid.
  */
 export async function signMessage(
   params: SignMessageParams,
   walletAddress: string,
   privy: Privy,
   walletId: string,
+  verify = false,
 ): Promise<SignedMessage> {
   const publicKey = publicKeyFromImplicit(walletAddress);
 
@@ -54,6 +58,9 @@ export async function signMessage(
   );
 
   const signatureBytes = hexSignatureToBytes(hexSignature);
+  if (verify && !verifySignature(publicKey, messageHash, signatureBytes)) {
+    throw new SignatureVerificationError();
+  }
 
   return {
     accountId: walletAddress,

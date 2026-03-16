@@ -24,12 +24,12 @@ const TEST_PAYLOAD: SignMessageParams = {
   nonce: new Uint8Array(32),
 };
 
-const TEST_WALLET: PrivyNearWallet = {
+const TEST_WALLET = {
   type: 'wallet',
   chain_type: 'near',
   id: 'wallet-id',
-  address: 'f2a01b1f803791c417cca65f7e872ccaf7a2ad42f36217c2709c1072f4c7500a',
-};
+  address: '718c0ad670786cc74ed01f50c063361531b42417f78d04f691b9c8e21923c5d8',
+} as PrivyNearWallet;
 
 const TEST_RESULT: SignedMessage = {
   accountId: TEST_WALLET.address,
@@ -140,5 +140,18 @@ describe('buildSignFn()', () => {
     const sign = buildSignFn(TEST_TARGET, privy, TEST_PAYLOAD);
 
     await expect(sign()).rejects.toBeInstanceOf(NoNearWalletError);
+  });
+
+  it('propagates signMessage failures without posting RESULT or closing the window', async () => {
+    const opener = mockOpener();
+    vi.mocked(signMessage).mockRejectedValue(new Error('signMessage failed'));
+    const sign = buildSignFn(TEST_TARGET, mockPrivy(), TEST_PAYLOAD, TEST_WALLET);
+
+    await expect(sign()).rejects.toThrow('signMessage failed');
+    expect(opener.postMessage).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'RESULT' }),
+      TEST_TARGET,
+    );
+    expect(window.close).not.toHaveBeenCalled();
   });
 });
