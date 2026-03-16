@@ -6,11 +6,11 @@ export class WindowOpenerClosedError extends Error {
   }
 }
 
-/** Thrown when `sign` is called more than once for the same session. */
-export class AlreadySignedError extends Error {
+/** Thrown when the current Privy user has no linked NEAR wallet available for signing. */
+export class NoNearWalletError extends Error {
   constructor() {
-    super('sign() has already been called on this session');
-    this.name = 'AlreadySignedError';
+    super('No linked Privy NEAR wallet found for this user');
+    this.name = 'NoNearWalletError';
   }
 }
 

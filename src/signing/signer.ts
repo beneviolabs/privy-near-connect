@@ -2,25 +2,18 @@ import type Privy from '@privy-io/js-sdk-core';
 import type { SignMessageParams } from '@hot-labs/near-connect';
 
 import {
-  AlreadySignedError,
+  NoNearWalletError,
   UnsupportedSigningPayloadError,
   WindowOpenerClosedError,
 } from '@/signing/errors';
 import { signMessage } from '@/signing/message';
-import type { ChannelMsg } from '@/types';
-
-const NO_NEAR_WALLET_ERROR_MESSAGE = 'No linked Privy NEAR wallet found for this user';
-type SigningPayload = Extract<ChannelMsg, { type: 'SIGN_REQUEST' }>['payload'];
+import type { ChannelMsg, SigningPayload } from '@/types';
+import type { LinkedAccountEmbeddedWallet } from '@privy-io/api-types';
 
 /** Linked Privy NEAR wallet metadata used by the sign-page signer. */
-export type PrivyNearWallet = {
-  /** Linked-account kind from Privy user profile. */
-  type: 'wallet';
-  /** Wallet chain type. */
+export type PrivyNearWallet = LinkedAccountEmbeddedWallet & {
   chain_type: 'near';
-  /** Privy wallet identifier used by Wallet API raw signing. */
   id: string;
-  /** NEAR implicit account address used as signer accountId. */
   address: string;
 };
 
@@ -58,17 +51,20 @@ async function getUserNearWallet(privy: Privy): Promise<PrivyNearWallet> {
     if (isPrivyNearWallet(account)) return account;
   }
 
-  throw new Error(NO_NEAR_WALLET_ERROR_MESSAGE);
+  throw new NoNearWalletError();
 }
 
 /**
- * Builds a one-shot `sign` callback for a received signing payload.
+ * Builds a signer callback for a received signing payload.
  *
  * @param target - postMessage target origin for opener communication.
  * @param privy - Initialized Privy client used for embedded-wallet signing.
  * @param payload - Payload received from opener via `SIGN_REQUEST`.
  * @param wallet - Optional preselected Privy NEAR wallet metadata.
- * @returns An async callback that signs once, posts `RESULT`, and closes the popup.
+ * @returns An async signer callback that signs the payload, posts `RESULT`, and closes the popup.
+ * @throws {@link WindowOpenerClosedError} If `window.opener` is no longer available when the returned signer runs.
+ * @throws {@link UnsupportedSigningPayloadError} If the payload is not a NEP-413 message payload.
+ * @throws {@link NoNearWalletError} If no linked NEAR wallet is available and no wallet was provided.
  */
 export function buildSignFn(
   target: string,
@@ -76,10 +72,7 @@ export function buildSignFn(
   payload: SigningPayload,
   wallet?: PrivyNearWallet,
 ): () => Promise<void> {
-  let signed = false;
   return async () => {
-    if (signed) throw new AlreadySignedError();
-    signed = true;
     if (!window.opener) throw new WindowOpenerClosedError();
     if (!isSignMessagePayload(payload)) throw new UnsupportedSigningPayloadError();
 

@@ -4,7 +4,7 @@ import type Privy from '@privy-io/js-sdk-core';
 import type { SignMessageParams, SignedMessage } from '@hot-labs/near-connect';
 
 import {
-  AlreadySignedError,
+  NoNearWalletError,
   UnsupportedSigningPayloadError,
   WindowOpenerClosedError,
 } from '@/signing/errors';
@@ -88,11 +88,13 @@ describe('buildSignFn()', () => {
     expect(window.close).toHaveBeenCalled();
   });
 
-  it('throws AlreadySignedError when called a second time', async () => {
+  it('can be called more than once and signs each time', async () => {
     const sign = buildSignFn(TEST_TARGET, mockPrivy(), TEST_PAYLOAD, TEST_WALLET);
 
     await sign();
-    await expect(sign()).rejects.toBeInstanceOf(AlreadySignedError);
+    await sign();
+
+    expect(signMessage).toHaveBeenCalledTimes(2);
   });
 
   it('throws WindowOpenerClosedError when window.opener is gone at sign time', async () => {
@@ -126,5 +128,17 @@ describe('buildSignFn()', () => {
       privy,
       TEST_WALLET.id,
     );
+  });
+
+  it('throws NoNearWalletError when no linked NEAR wallet exists', async () => {
+    const privy = {
+      ...mockPrivy(),
+      user: {
+        get: vi.fn().mockResolvedValue({ user: { linked_accounts: [] } }),
+      },
+    } as unknown as Privy;
+    const sign = buildSignFn(TEST_TARGET, privy, TEST_PAYLOAD);
+
+    await expect(sign()).rejects.toBeInstanceOf(NoNearWalletError);
   });
 });
