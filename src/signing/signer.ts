@@ -5,7 +5,7 @@ import {
   AlreadySignedError,
   UnsupportedSigningPayloadError,
   WindowOpenerClosedError,
-} from '@/sign-page.errors';
+} from '@/signing/errors';
 import { signMessage } from '@/signing/message';
 import type { ChannelMsg } from '@/types';
 
