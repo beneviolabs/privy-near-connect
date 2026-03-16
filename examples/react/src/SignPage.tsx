@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { initSigningPage } from '@peerfolio/privy-near-connect/sign-page';
 import type { SignPageSession } from '@peerfolio/privy-near-connect/sign-page';
-import { privy } from './privy';
+import Privy, { LocalStorage } from '@privy-io/js-sdk-core';
+
+export const privy = new Privy({
+  appId: import.meta.env.VITE_PRIVY_APP_ID!,
+  clientId: import.meta.env.VITE_PRIVY_APP_CLIENT_ID!,
+  storage: new LocalStorage(),
+});
 
 type Status = 'waiting' | 'ready' | 'signing' | 'error';
 

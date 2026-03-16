@@ -65,6 +65,7 @@ async function getUserNearWallet(privy: Privy): Promise<PrivyNearWallet> {
  * @throws {@link WindowOpenerClosedError} If `window.opener` is no longer available when the returned signer runs.
  * @throws {@link UnsupportedSigningPayloadError} If the payload is not a NEP-413 message payload.
  * @throws {@link NoNearWalletError} If no linked NEAR wallet is available and no wallet was provided.
+ * @throws {@link PrivyApiError} This comes from the Privy lib and is thrown if an error occurs during API calls.
  */
 export function buildSignFn(
   target: string,

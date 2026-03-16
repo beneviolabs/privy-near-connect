@@ -28,3 +28,7 @@ npm run dev
 ```
 
 Open the app at http://localhost:5173.
+
+## FAQ and Troubleshooting
+
+- Origin not allowed error in signing page: Make sure to add `http://localhost:5173` to the allowed origins for your app in the [Privy dashboard](https://dashboard.privy.io/) and configure the `VITE_PRIVY_APP_ID` and `VITE_PRIVY_APP_CLIENT_ID` environment variables in `examples/react/.env` with the values from your dashboard app settings.

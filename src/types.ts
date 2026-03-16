@@ -1,4 +1,8 @@
-import type { SignAndSendTransactionParams, SignMessageParams, SignedMessage } from '@hot-labs/near-connect';
+import type {
+  SignAndSendTransactionParams,
+  SignMessageParams,
+  SignedMessage,
+} from '@hot-labs/near-connect';
 import type { FinalExecutionOutcome } from '@near-js/types';
 
 export type {
