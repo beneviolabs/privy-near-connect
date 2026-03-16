@@ -1,10 +1,13 @@
 import type Privy from '@privy-io/js-sdk-core';
+import type { LinkedAccountEmbeddedWallet } from '@privy-io/api-types';
 
-import type { ChannelMsg, SigningPayload } from './types.js';
+import { signMessage } from './sign-message.js';
+import type { ChannelMsg, SignMessageParams, SigningPayload } from './types.js';
 import {
   AlreadySignedError,
   NoOpenerError,
   TimeoutError,
+  UnsupportedSigningPayloadError,
   WindowOpenerClosedError,
 } from './sign-page.errors.js';
 
@@ -12,13 +15,22 @@ const DEFAULT_SIGN_REQUEST_TIMEOUT_MS = 30_000;
 const READY_MESSAGE = { type: 'READY' } as const satisfies ChannelMsg;
 const INVALID_ORIGIN_ERROR_MESSAGE =
   'A specific target origin is required; wildcard origins are not allowed';
+const NO_NEAR_WALLET_ERROR_MESSAGE = 'No linked Privy NEAR wallet found for this user';
+
+type PrivyNearWallet = LinkedAccountEmbeddedWallet & {
+  chain_type: 'near';
+  id: string;
+  address: string;
+};
 
 /** Options for configuring signing page handshake behavior. */
 export type SignPageOptions = {
   /** Milliseconds to wait for `SIGN_REQUEST` before rejecting. */
   timeout?: number;
-  /** Exact trusted origin to use for postMessage target and message filtering. */
+  /** Exact trusted origin to use for postMessage target and message filtering. Defaults to the current window origin. */
   allowedOrigin?: string;
+  /** Wallet to use during signing. If omitted, it is fetched from `privy.user.get()` during signing. */
+  wallet?: PrivyNearWallet;
 };
 
 /** Session returned by `initSigningPage` after receiving a signing payload. */
@@ -80,14 +92,61 @@ function waitForOpenerSignRequest(allowedOrigin: string, timeout: number): Promi
   });
 }
 
-function buildSign(target: string, privy: Privy, payload: SigningPayload): () => Promise<void> {
+function isSignMessagePayload(payload: SigningPayload): payload is SignMessageParams {
+  return (
+    typeof payload === 'object' &&
+    payload !== null &&
+    'message' in payload &&
+    'nonce' in payload &&
+    'recipient' in payload
+  );
+}
+
+function isPrivyNearWallet(account: unknown): account is PrivyNearWallet {
+  if (typeof account !== 'object' || account === null) return false;
+
+  const typedAccount = account as {
+    type?: unknown;
+    chain_type?: unknown;
+    id?: unknown;
+    address?: unknown;
+  };
+
+  return (
+    typedAccount.type === 'wallet' &&
+    typedAccount.chain_type === 'near' &&
+    typeof typedAccount.id === 'string' &&
+    typeof typedAccount.address === 'string'
+  );
+}
+
+async function getUserNearWallet(privy: Privy): Promise<PrivyNearWallet> {
+  const { user } = await privy.user.get();
+  for (const account of user.linked_accounts) {
+    if (isPrivyNearWallet(account)) return account;
+  }
+
+  throw new Error(NO_NEAR_WALLET_ERROR_MESSAGE);
+}
+
+function buildSignFn(
+  target: string,
+  privy: Privy,
+  payload: SigningPayload,
+  wallet?: PrivyNearWallet,
+): () => Promise<void> {
   let signed = false;
   return async () => {
     if (signed) throw new AlreadySignedError();
     signed = true;
     if (!window.opener) throw new WindowOpenerClosedError();
-    // TODO: call privy.embeddedWallet signing method with payload
-    throw new Error('Privy signing is not yet implemented');
+    if (!isSignMessagePayload(payload)) throw new UnsupportedSigningPayloadError();
+
+    const walletToUse = wallet ?? (await getUserNearWallet(privy));
+
+    const result = await signMessage(payload, walletToUse.address, privy, walletToUse.id);
+    (window.opener as Window).postMessage({ type: 'RESULT', result } satisfies ChannelMsg, target);
+    window.close();
   };
 }
 
@@ -126,5 +185,8 @@ export const initSigningPage = async (
     options?.timeout ?? DEFAULT_SIGN_REQUEST_TIMEOUT_MS,
   );
 
-  return { payload, sign: buildSign(target, privy, payload) };
+  return {
+    payload,
+    sign: buildSignFn(target, privy, payload, options?.wallet),
+  };
 };

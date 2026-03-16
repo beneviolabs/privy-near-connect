@@ -29,3 +29,11 @@ export class AlreadySignedError extends Error {
     this.name = 'AlreadySignedError';
   }
 }
+
+/** Thrown when `sign` is called with a payload type that this signer does not support. */
+export class UnsupportedSigningPayloadError extends Error {
+  constructor() {
+    super('Only NEP-413 signMessage payloads are currently supported');
+    this.name = 'UnsupportedSigningPayloadError';
+  }
+}
