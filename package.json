@@ -54,6 +54,7 @@
     "@noble/hashes": "^1.8.0",
     "@privy-io/js-sdk-core": "^0.60.5",
     "@scure/base": "^2.0.0",
-    "borsh": "^2.0.0"
+    "borsh": "^2.0.0",
+    "near-api-js": "^7.2.0"
   }
 }

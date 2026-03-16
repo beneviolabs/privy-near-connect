@@ -1,5 +1,5 @@
 import type Privy from '@privy-io/js-sdk-core';
-import type { SignMessageParams } from '@hot-labs/near-connect';
+import type { SignAndSendTransactionParams, SignMessageParams } from '@hot-labs/near-connect';
 
 import {
   NoNearWalletError,
@@ -7,7 +7,8 @@ import {
   WindowOpenerClosedError,
 } from '@/signing/errors';
 import { signMessage } from '@/signing/message';
-import type { ChannelMsg, SigningPayload } from '@/types';
+import { signAndSendTransaction } from '@/signing/transactions';
+import type { ChannelMsg, SigningPayload, SigningResult } from '@/types';
 import type { LinkedAccountEmbeddedWallet } from '@privy-io/api-types';
 
 /** Linked Privy NEAR wallet metadata used by the sign-page signer. */
@@ -24,6 +25,17 @@ function isSignMessagePayload(payload: SigningPayload): payload is SignMessagePa
     'message' in payload &&
     'nonce' in payload &&
     'recipient' in payload
+  );
+}
+
+function isSignAndSendTransactionPayload(
+  payload: SigningPayload,
+): payload is SignAndSendTransactionParams {
+  return (
+    typeof payload === 'object' &&
+    payload !== null &&
+    'receiverId' in payload &&
+    'actions' in payload
   );
 }
 
@@ -63,7 +75,7 @@ async function getUserNearWallet(privy: Privy): Promise<PrivyNearWallet> {
  * @param wallet - Optional preselected Privy NEAR wallet metadata.
  * @returns An async signer callback that signs the payload, posts `RESULT`, and closes the popup.
  * @throws {@link WindowOpenerClosedError} If `window.opener` is no longer available when the returned signer runs.
- * @throws {@link UnsupportedSigningPayloadError} If the payload is not a NEP-413 message payload.
+ * @throws {@link UnsupportedSigningPayloadError} If the payload is neither a NEP-413 message nor a transaction payload.
  * @throws {@link NoNearWalletError} If no linked NEAR wallet is available and no wallet was provided.
  * @throws {@link PrivyApiError} This comes from the Privy lib and is thrown if an error occurs during API calls.
  */
@@ -75,11 +87,19 @@ export function buildSignFn(
 ): () => Promise<void> {
   return async () => {
     if (!window.opener) throw new WindowOpenerClosedError();
-    if (!isSignMessagePayload(payload)) throw new UnsupportedSigningPayloadError();
+    if (!isSignMessagePayload(payload) && !isSignAndSendTransactionPayload(payload)) {
+      throw new UnsupportedSigningPayloadError();
+    }
 
     const walletToUse = wallet ?? (await getUserNearWallet(privy));
 
-    const result = await signMessage(payload, walletToUse.address, privy, walletToUse.id);
+    let result: SigningResult;
+    if (isSignMessagePayload(payload)) {
+      result = await signMessage(payload, walletToUse.address, privy, walletToUse.id);
+    } else {
+      result = await signAndSendTransaction(payload, walletToUse.address, privy, walletToUse.id);
+    }
+
     (window.opener as Window).postMessage({ type: 'RESULT', result } satisfies ChannelMsg, target);
     window.close();
   };

@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type Privy from '@privy-io/js-sdk-core';
-import type { SignMessageParams, SignedMessage } from '@hot-labs/near-connect';
+import type { SignAndSendTransactionParams, SignMessageParams, SignedMessage } from '@hot-labs/near-connect';
+import type { FinalExecutionOutcome } from '@near-js/types';
 
 import {
   NoNearWalletError,
@@ -9,10 +10,15 @@ import {
   WindowOpenerClosedError,
 } from '@/signing/errors';
 import { signMessage } from '@/signing/message';
+import { signAndSendTransaction } from '@/signing/transactions';
 import { buildSignFn, type PrivyNearWallet } from '@/signing/signer';
 
 vi.mock('@/signing/message', () => ({
   signMessage: vi.fn(),
+}));
+
+vi.mock('@/signing/transactions', () => ({
+  signAndSendTransaction: vi.fn(),
 }));
 
 const OPENER_ORIGIN = 'https://app.example.com';
@@ -36,6 +42,18 @@ const TEST_RESULT: SignedMessage = {
   publicKey: 'ed25519:test-public-key',
   signature: 'dGVzdC1zaWduYXR1cmU=',
 };
+
+const TEST_TX_PAYLOAD: SignAndSendTransactionParams = {
+  receiverId: 'bob.near',
+  actions: [],
+};
+
+const TEST_TX_RESULT = {
+  status: { SuccessValue: '' },
+  transaction: {},
+  transaction_outcome: {},
+  receipts_outcome: [],
+} as unknown as FinalExecutionOutcome;
 
 function mockOpener() {
   const opener = { postMessage: vi.fn(), origin: OPENER_ORIGIN };
@@ -62,6 +80,7 @@ describe('buildSignFn()', () => {
     mockOpener();
     vi.stubGlobal('close', vi.fn());
     vi.mocked(signMessage).mockResolvedValue(TEST_RESULT);
+    vi.mocked(signAndSendTransaction).mockResolvedValue(TEST_TX_RESULT);
   });
 
   afterEach(() => {
@@ -105,14 +124,29 @@ describe('buildSignFn()', () => {
   });
 
   it('throws UnsupportedSigningPayloadError for unsupported payloads', async () => {
-    const unsupportedPayload = {
-      signerId: 'alice.near',
-      receiverId: 'bob.near',
-      actions: [],
-    };
+    const unsupportedPayload = { foo: 'bar' };
     const sign = buildSignFn(TEST_TARGET, mockPrivy(), unsupportedPayload as never, TEST_WALLET);
 
     await expect(sign()).rejects.toBeInstanceOf(UnsupportedSigningPayloadError);
+  });
+
+  it('routes a transaction payload to signAndSendTransaction and posts RESULT', async () => {
+    const opener = mockOpener();
+    const sign = buildSignFn(TEST_TARGET, mockPrivy(), TEST_TX_PAYLOAD, TEST_WALLET);
+
+    await sign();
+
+    expect(signAndSendTransaction).toHaveBeenCalledWith(
+      TEST_TX_PAYLOAD,
+      TEST_WALLET.address,
+      expect.any(Object),
+      TEST_WALLET.id,
+    );
+    expect(opener.postMessage).toHaveBeenCalledWith(
+      { type: 'RESULT', result: TEST_TX_RESULT },
+      TEST_TARGET,
+    );
+    expect(window.close).toHaveBeenCalled();
   });
 
   it('fetches the user wallet only when one is not provided', async () => {
