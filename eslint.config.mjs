@@ -6,14 +6,14 @@ import tseslint from 'typescript-eslint';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default [
-  { ignores: ['dist/**', 'node_modules/**'] },
+  { ignores: ['**/dist/**', '**/node_modules/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
     files: ['**/*.ts'],
     languageOptions: {
       parserOptions: {
-        project: true,
+        project: ['./tsconfig.json', './examples/react/tsconfig.json'],
         tsconfigRootDir: __dirname,
       },
     },
