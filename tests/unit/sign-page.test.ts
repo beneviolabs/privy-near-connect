@@ -7,9 +7,9 @@ import {
   NoOpenerError,
   WindowOpenerClosedError,
   TimeoutError,
-} from '../../src/sign-page.errors.js';
-import { initSigningPage } from '../../src/sign-page.js';
-import type { SignMessageParams } from '../../src/types.js';
+} from '../../src/sign-page.errors';
+import { initSigningPage } from '../../src/sign-page';
+import type { SignMessageParams } from '../../src/types';
 
 // ---------- helpers ----------
 
