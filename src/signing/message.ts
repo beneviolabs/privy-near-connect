@@ -1,4 +1,4 @@
-import { sha256 } from '@noble/hashes/sha256';
+import { sha256 } from '@noble/hashes/sha2';
 import { serialize, type Schema } from 'borsh';
 import { rawSign } from '@privy-io/js-sdk-core';
 import type Privy from '@privy-io/js-sdk-core';
