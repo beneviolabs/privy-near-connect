@@ -1,9 +1,9 @@
 import type Privy from '@privy-io/js-sdk-core';
 
-import { buildSignFn } from './signing/signer';
-import type { PrivyNearWallet } from './signing/signer';
-import type { ChannelMsg, SigningPayload } from './types';
-import { NoOpenerError, TimeoutError } from './sign-page.errors';
+import { NoOpenerError, TimeoutError } from '@/sign-page.errors';
+import { buildSignFn } from '@/signing/signer';
+import type { PrivyNearWallet } from '@/signing/signer';
+import type { ChannelMsg, SigningPayload } from '@/types';
 
 const DEFAULT_SIGN_REQUEST_TIMEOUT_MS = 30_000;
 const READY_MESSAGE = { type: 'READY' } as const satisfies ChannelMsg;

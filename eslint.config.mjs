@@ -22,4 +22,20 @@ export default [
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
+  {
+    files: ['src/**/*.ts', 'tests/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['./*', '../*'],
+              message: 'Use the `@/` alias for internal library imports instead of relative paths.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 ];

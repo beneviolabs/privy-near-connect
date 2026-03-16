@@ -1,13 +1,13 @@
 import type Privy from '@privy-io/js-sdk-core';
 import type { SignMessageParams } from '@hot-labs/near-connect';
 
-import type { ChannelMsg } from '../types';
 import {
   AlreadySignedError,
   UnsupportedSigningPayloadError,
   WindowOpenerClosedError,
-} from '../sign-page.errors';
-import { signMessage } from './message';
+} from '@/sign-page.errors';
+import { signMessage } from '@/signing/message';
+import type { ChannelMsg } from '@/types';
 
 const NO_NEAR_WALLET_ERROR_MESSAGE = 'No linked Privy NEAR wallet found for this user';
 type SigningPayload = Extract<ChannelMsg, { type: 'SIGN_REQUEST' }>['payload'];

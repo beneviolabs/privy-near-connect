@@ -1,4 +1,8 @@
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'tsup';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   entry: {
@@ -13,4 +17,10 @@ export default defineConfig({
   splitting: false,
   treeshake: true,
   outDir: 'dist',
+  esbuildOptions(options) {
+    options.alias = {
+      ...options.alias,
+      '@': resolve(__dirname, 'src'),
+    };
+  },
 });

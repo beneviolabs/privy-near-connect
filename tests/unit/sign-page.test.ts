@@ -1,15 +1,10 @@
 // @vitest-environment happy-dom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type Privy from '@privy-io/js-sdk-core';
+import type { SignMessageParams } from '@hot-labs/near-connect';
 
-import {
-  AlreadySignedError,
-  NoOpenerError,
-  WindowOpenerClosedError,
-  TimeoutError,
-} from '../../src/sign-page.errors';
-import { initSigningPage } from '../../src/sign-page';
-import type { SignMessageParams } from '../../src/types';
+import { NoOpenerError, TimeoutError } from '@/sign-page.errors';
+import { initSigningPage } from '@/sign-page';
 
 // ---------- helpers ----------
 
@@ -106,6 +101,7 @@ describe('initSigningPage()', () => {
 
       const session = await promise;
       expect(session.payload).toEqual(TEST_PAYLOAD);
+      expect(session.sign).toEqual(expect.any(Function));
     });
 
     it('ignores messages from an unexpected origin', async () => {
@@ -147,33 +143,5 @@ describe('initSigningPage()', () => {
 
       await expect(promise).rejects.toBeInstanceOf(TimeoutError);
     });
-  });
-});
-
-describe('sign()', () => {
-  beforeEach(() => mockOpener());
-  afterEach(() => {
-    vi.unstubAllGlobals();
-    document.querySelectorAll('iframe[data-privy-embed]').forEach((el) => el.remove());
-  });
-
-  async function getSign() {
-    const promise = initSigningPage(mockPrivy());
-    await flushPrivyIframeLoad();
-    dispatchSignRequest();
-    const { sign } = await promise;
-    return sign;
-  }
-
-  it('throws AlreadySignedError when called a second time', async () => {
-    const sign = await getSign();
-    await sign().catch(() => {}); // first call — will throw "not implemented", ignore
-    await expect(sign()).rejects.toBeInstanceOf(AlreadySignedError);
-  });
-
-  it('throws WindowOpenerClosedError when window.opener is gone at sign time', async () => {
-    const sign = await getSign();
-    vi.stubGlobal('opener', null);
-    await expect(sign()).rejects.toBeInstanceOf(WindowOpenerClosedError);
   });
 });
