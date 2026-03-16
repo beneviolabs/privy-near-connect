@@ -4,7 +4,7 @@ import { rawSign } from '@privy-io/js-sdk-core';
 import type Privy from '@privy-io/js-sdk-core';
 import type { SignMessageParams, SignedMessage } from '@hot-labs/near-connect';
 
-import { publicKeyFromImplicit, hexSignatureToBytes } from './crypto';
+import { publicKeyFromImplicit, hexSignatureToBytes } from './utils';
 
 /** NEP-413 message schema for Borsh serialization. */
 export const Nep413MessageSchema: Schema = {
