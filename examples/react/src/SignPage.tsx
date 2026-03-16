@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { initSigningPage } from '@peerfolio/privy-near-connect/sign-page';
 import type { SignPageSession } from '@peerfolio/privy-near-connect/sign-page';
+import { privy } from './privy';
 
 type Status = 'waiting' | 'ready' | 'signing' | 'error';
 
@@ -15,7 +16,7 @@ export default function SignPage() {
     if (initialized.current) return;
     initialized.current = true;
 
-    initSigningPage()
+    initSigningPage(privy)
       .then((s) => {
         setSession(s);
         setStatus('ready');
@@ -32,6 +33,7 @@ export default function SignPage() {
     try {
       await session.sign();
     } catch (e) {
+      console.error('Error during signing:', e);
       setErrorMsg((e as Error).message);
       setStatus('error');
     }
