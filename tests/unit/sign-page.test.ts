@@ -44,6 +44,15 @@ function dispatchSignRequest(payload = TEST_PAYLOAD, origin = OPENER_ORIGIN) {
   );
 }
 
+function dispatchPrivyIframeMessage(iframe: HTMLIFrameElement, data: unknown) {
+  window.dispatchEvent(
+    new MessageEvent('message', {
+      data,
+      source: iframe.contentWindow,
+    }),
+  );
+}
+
 describe('initSigningPage()', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -105,6 +114,33 @@ describe('initSigningPage()', () => {
       vi.runAllTimers();
       await expect(promise).rejects.toBeInstanceOf(TimeoutError);
     });
+
+    it('reuses the existing iframe instead of mounting a new one', async () => {
+      const firstPrivy = mockPrivy();
+      const secondPrivy = mockPrivy();
+
+      mockOpener();
+      const firstPromise = initSigningPage(firstPrivy, { timeout: 1000 });
+      await flushPrivyIframeLoad();
+      const firstIframe = document.querySelector('iframe[data-privy-embed]') as HTMLIFrameElement;
+
+      const secondPromise = initSigningPage(secondPrivy, { timeout: 1000 });
+      const iframes = document.querySelectorAll('iframe[data-privy-embed]');
+
+      expect(iframes).toHaveLength(1);
+      expect(iframes[0]).toBe(firstIframe);
+
+      dispatchPrivyIframeMessage(firstIframe, { stale: true });
+
+      expect(firstPrivy.embeddedWallet.onMessage).toHaveBeenCalledWith({ stale: true });
+      expect(secondPrivy.embeddedWallet.onMessage).not.toHaveBeenCalled();
+
+      await Promise.resolve();
+      dispatchSignRequest();
+
+      await expect(firstPromise).resolves.toMatchObject({ payload: TEST_PAYLOAD });
+      await expect(secondPromise).resolves.toMatchObject({ payload: TEST_PAYLOAD });
+    });
   });
 
   describe('SIGN_REQUEST handling', () => {
@@ -157,6 +193,7 @@ describe('initSigningPage()', () => {
       vi.advanceTimersByTime(1000);
 
       await expect(promise).rejects.toBeInstanceOf(TimeoutError);
+      expect(document.querySelector('iframe[data-privy-embed]')).not.toBeNull();
     });
   });
 });

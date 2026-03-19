@@ -28,28 +28,55 @@ export type SignPageSession = {
   sign: () => Promise<void>;
 };
 
-function mountPrivyIframe(privy: Privy): Promise<void> {
+let cleanupMountedIframe: (() => void) | undefined;
+
+function mountPrivyIframe(privy: Privy): Promise<() => void> {
   return new Promise((resolve) => {
+    const mountedIframe = document.querySelector('iframe[data-privy-embed]');
+    if (mountedIframe && cleanupMountedIframe) {
+      resolve(cleanupMountedIframe);
+      return;
+    }
+
+    cleanupMountedIframe = undefined;
+
     const iframe = document.createElement('iframe');
     iframe.dataset.privyEmbed = '';
     iframe.src = privy.embeddedWallet.getURL();
     iframe.style.display = 'none';
 
-    iframe.addEventListener('load', () => {
-      privy.setMessagePoster({
-        postMessage: (msg, origin, transfer) =>
-          iframe.contentWindow!.postMessage(msg, origin, transfer ? [transfer] : undefined),
-        reload: () => {
-          iframe.src = privy.embeddedWallet.getURL();
-        },
-      });
-      resolve();
-    });
+    let cleanedUp = false;
 
-    window.addEventListener('message', (event) => {
+    const onMessage = (event: MessageEvent) => {
       if (event.source !== iframe.contentWindow) return;
       privy.embeddedWallet.onMessage(event.data);
-    });
+    };
+
+    const cleanup = () => {
+      if (cleanedUp) return;
+      cleanedUp = true;
+      window.removeEventListener('message', onMessage);
+      iframe.remove();
+      if (cleanupMountedIframe === cleanup) cleanupMountedIframe = undefined;
+    };
+
+    iframe.addEventListener(
+      'load',
+      () => {
+        privy.setMessagePoster({
+          postMessage: (msg, origin, transfer) =>
+            iframe.contentWindow!.postMessage(msg, origin, transfer ? [transfer] : undefined),
+          reload: () => {
+            iframe.src = privy.embeddedWallet.getURL();
+          },
+        });
+        cleanupMountedIframe = cleanup;
+        resolve(cleanup);
+      },
+      { once: true },
+    );
+
+    window.addEventListener('message', onMessage);
 
     document.body.appendChild(iframe);
   });
