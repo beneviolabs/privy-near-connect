@@ -14,7 +14,7 @@ const INVALID_ORIGIN_ERROR_MESSAGE =
 export type SignPageOptions = {
   /** Milliseconds to wait for `SIGN_REQUEST` before rejecting. */
   timeout?: number;
-  /** Exact trusted origin to use for postMessage target and message filtering. Defaults to the current window origin. */
+  /** Exact trusted origin to use for postMessage target and message filtering. Defaults to `window.opener.location.origin` when same-origin access is available. */
   allowedOrigin?: string;
   /** Wallet to use during signing. If omitted, it is fetched from `privy.user.get()` during signing. */
   wallet?: PrivyNearWallet;
@@ -84,7 +84,7 @@ function waitForOpenerSignRequest(allowedOrigin: string, timeout: number): Promi
  * handshake with the opener window.
  *
  * @param privy - An instantiated and initialized Privy client.
- * @param options - Optional timeout and trusted origin overrides.
+ * @param options - Optional timeout and trusted origin overrides. Provide `allowedOrigin` when the opener is cross-origin.
  * @returns A session containing the received payload and a `sign` callback.
  * @throws {@link NoOpenerError} If `window.opener` is not available.
  * @throws {@link TimeoutError} If no `SIGN_REQUEST` arrives before timeout.
@@ -99,7 +99,7 @@ export const initSigningPage = async (
   let target = options?.allowedOrigin;
   if (!target) {
     try {
-      target = (window.opener as Window).origin;
+      target = window.opener.location.origin;
     } catch {
       throw new Error(INVALID_ORIGIN_ERROR_MESSAGE);
     }

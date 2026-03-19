@@ -17,7 +17,7 @@ const TEST_PAYLOAD: SignMessageParams = {
 };
 
 function mockOpener() {
-  const opener = { postMessage: vi.fn(), origin: OPENER_ORIGIN };
+  const opener = { postMessage: vi.fn(), location: { origin: OPENER_ORIGIN } };
   vi.stubGlobal('opener', opener);
   return opener;
 }
@@ -66,7 +66,7 @@ describe('initSigningPage()', () => {
   });
 
   describe('READY handshake', () => {
-    it('posts READY to opener using opener.origin as target', async () => {
+    it('posts READY to opener using opener.location.origin as target', async () => {
       vi.useFakeTimers();
       const opener = mockOpener();
       const promise = initSigningPage(mockPrivy());
@@ -76,6 +76,21 @@ describe('initSigningPage()', () => {
 
       vi.runAllTimers();
       await expect(promise).rejects.toBeInstanceOf(TimeoutError);
+    });
+
+    it('rejects when allowedOrigin is omitted and opener origin is not readable', async () => {
+      vi.stubGlobal('opener', {
+        postMessage: vi.fn(),
+        get location() {
+          throw new DOMException(
+            'Blocked a frame with origin from accessing a cross-origin frame.',
+          );
+        },
+      });
+
+      await expect(initSigningPage(mockPrivy())).rejects.toThrow(
+        'A specific target origin is required; wildcard origins are not allowed',
+      );
     });
 
     it('uses allowedOrigin as postMessage target when provided', async () => {
