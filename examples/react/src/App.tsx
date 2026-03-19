@@ -10,6 +10,7 @@ type ChannelMsg =
 type Status = 'idle' | 'opening' | 'waiting' | 'done' | 'error';
 
 const TEST_PAYLOAD = {
+  kind: 'signMessage',
   message: 'Hello, NEAR!',
   recipient: 'example.near',
   nonce: crypto.getRandomValues(new Uint8Array(32)),
@@ -39,38 +40,34 @@ const guestBookCall2 = {
 };
 
 const TEST_TX_PAYLOAD = {
+  kind: 'signAndSendTransaction',
   receiverId: GUEST_BOOK_RECEIVER_ID,
   actions: [guestBookCall1, guestBookCall2],
 };
 
 const TEST_TXS_PAYLOAD = {
   kind: 'signAndSendTransactions',
-  params: {
-    network: 'mainnet',
-    transactions: [
-      {
-        receiverId: GUEST_BOOK_RECEIVER_ID,
-        actions: [guestBookCall1],
-      },
-      {
-        receiverId: GUEST_BOOK_RECEIVER_ID,
-        actions: [guestBookCall2],
-      },
-    ],
-  },
+  network: 'mainnet',
+  transactions: [
+    {
+      receiverId: GUEST_BOOK_RECEIVER_ID,
+      actions: [guestBookCall1],
+    },
+    {
+      receiverId: GUEST_BOOK_RECEIVER_ID,
+      actions: [guestBookCall2],
+    },
+  ],
 };
 
 const TEST_SIGN_IN_PAYLOAD = {
   kind: 'signIn',
-  params: { network: 'mainnet', publicKey: 'ed25519:11111111111111111111111111111111' },
+  network: 'mainnet',
 };
 
 const TEST_SIGN_OUT_PAYLOAD = {
   kind: 'signOut',
-  params: {
-    network: 'mainnet',
-    publicKey: 'ed25519:11111111111111111111111111111111',
-  },
+  network: 'mainnet',
 };
 
 function openSigningPopup(

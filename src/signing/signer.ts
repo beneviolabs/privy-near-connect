@@ -1,7 +1,5 @@
 import type Privy from '@privy-io/js-sdk-core';
-import type { SignAndSendTransactionParams, SignMessageParams } from '@hot-labs/near-connect';
 import type { LinkedAccountEmbeddedWallet } from '@privy-io/api-types';
-import type { Network } from '@hot-labs/near-connect/build/types/index.js';
 
 import {
   NoNearWalletError,
@@ -10,15 +8,7 @@ import {
 } from '@/signing/errors';
 import { createProvider, CustomAccount } from '@/signing/account';
 import type { PrivyConfig, RpcOptions } from '@/signing/account';
-import { toNearAction } from '@/signing/utils';
-import type {
-  ChannelMsg,
-  SignAndSendTransactionsPayload,
-  SignInPayload,
-  SignOutPayload,
-  SigningPayload,
-  SigningResult,
-} from '@/types';
+import type { ChannelMsg, SigningPayload, SigningResult } from '@/types';
 
 export type { RpcOptions } from '@/signing/account';
 
@@ -30,56 +20,6 @@ export type PrivyNearWallet = LinkedAccountEmbeddedWallet & {
   /** Implicit account address (hex-encoded public key). */
   address: string;
 };
-
-function isSignMessagePayload(payload: SigningPayload): payload is SignMessageParams {
-  return (
-    typeof payload === 'object' &&
-    payload !== null &&
-    'message' in payload &&
-    'nonce' in payload &&
-    'recipient' in payload
-  );
-}
-
-function isSignAndSendTransactionPayload(
-  payload: SigningPayload,
-): payload is SignAndSendTransactionParams {
-  return (
-    typeof payload === 'object' &&
-    payload !== null &&
-    'receiverId' in payload &&
-    'actions' in payload
-  );
-}
-
-function isSignInPayload(payload: SigningPayload): payload is SignInPayload {
-  return (
-    typeof payload === 'object' &&
-    payload !== null &&
-    'kind' in payload &&
-    payload.kind === 'signIn'
-  );
-}
-
-function isSignOutPayload(payload: SigningPayload): payload is SignOutPayload {
-  return (
-    typeof payload === 'object' &&
-    payload !== null &&
-    'kind' in payload &&
-    payload.kind === 'signOut'
-  );
-}
-
-function isSignAndSendTransactionsPayload(
-  payload: SigningPayload,
-): payload is SignAndSendTransactionsPayload {
-  return (
-    typeof payload === 'object' &&
-    payload !== null &&
-    'kind' in payload &&
-    payload.kind === 'signAndSendTransactions'
-  );
-}
 
 function isPrivyNearWallet(account: unknown): account is PrivyNearWallet {
   if (typeof account !== 'object' || account === null) return false;
@@ -108,14 +48,6 @@ async function getUserNearWallet(privy: Privy): Promise<PrivyNearWallet> {
   throw new NoNearWalletError();
 }
 
-function getNetworkFromPayload(payload: SigningPayload): Network | undefined {
-  if (isSignAndSendTransactionPayload(payload)) return payload.network;
-  if (isSignAndSendTransactionsPayload(payload)) return payload.params.network;
-  if (isSignInPayload(payload)) return payload.params?.network;
-  if (isSignOutPayload(payload)) return payload.params.network;
-  return undefined;
-}
-
 /**
  * Builds a signer callback for a received signing payload.
  *
@@ -139,13 +71,7 @@ export function buildSignFn(
 ): () => Promise<void> {
   return async () => {
     if (!window.opener) throw new WindowOpenerClosedError();
-    if (
-      !isSignMessagePayload(payload) &&
-      !isSignAndSendTransactionPayload(payload) &&
-      !isSignInPayload(payload) &&
-      !isSignOutPayload(payload) &&
-      !isSignAndSendTransactionsPayload(payload)
-    ) {
+    if (typeof payload !== 'object' || payload === null || !('kind' in payload)) {
       throw new UnsupportedSigningPayloadError();
     }
 
@@ -154,29 +80,27 @@ export function buildSignFn(
       privyClient: privy,
       wallet: walletToUse,
     };
-    const account = new CustomAccount(
-      walletConfig,
-      createProvider(getNetworkFromPayload(payload), rpcOptions),
-    );
+    const account = new CustomAccount(walletConfig, createProvider(payload.network, rpcOptions));
 
     let result: SigningResult;
-    if (isSignInPayload(payload)) {
-      result = await account.signIn();
-    } else if (isSignOutPayload(payload)) {
-      result = await account.signOut(payload.params);
-    } else {
-      if (isSignMessagePayload(payload)) {
-        result = await account.signMessage(payload);
-      } else if (isSignAndSendTransactionPayload(payload)) {
+    switch (payload.kind) {
+      case 'signIn':
+        result = await account.signIn(payload);
+        break;
+      case 'signOut':
+        result = await account.signOut(payload);
+        break;
+      case 'signMessage':
+        result = await account.ncSignMessage(payload);
+        break;
+      case 'signAndSendTransaction':
         result = (await account.signAndSendTransaction(payload)) as unknown as SigningResult;
-      } else {
-        result = (await account.signAndSendTransactions({
-          transactions: payload.params.transactions.map((transaction) => ({
-            receiverId: transaction.receiverId,
-            actions: transaction.actions.map(toNearAction),
-          })),
-        })) as unknown as SigningResult;
-      }
+        break;
+      case 'signAndSendTransactions':
+        result = (await account.signAndSendTransactions(payload)) as unknown as SigningResult;
+        break;
+      default:
+        throw new UnsupportedSigningPayloadError();
     }
 
     (window.opener as Window).postMessage({ type: 'RESULT', result } satisfies ChannelMsg, target);

@@ -1,22 +1,24 @@
 import { rawSign } from '@privy-io/js-sdk-core';
 import { toHex } from 'viem';
 import type Privy from '@privy-io/js-sdk-core';
-import type { SignAndSendTransactionParams, SignMessageParams } from '@hot-labs/near-connect';
+import type {
+  SignAndSendTransactionParams,
+  SignAndSendTransactionsParams,
+  SignMessageParams,
+} from '@hot-labs/near-connect';
 import type {
   Account as NearConnectAccount,
   Network,
+  SignedMessage as NcSignedMessage,
+  SignInParams,
 } from '@hot-labs/near-connect/build/types/index.js';
-import type { FinalExecutionOutcome } from '@near-js/types';
-import type { SignedMessage } from 'near-api-js';
-import { actions, Account, JsonRpcProvider, PublicKey, Signer } from 'near-api-js';
+import type { SignedMessage as NearApiSignedMessage } from 'near-api-js';
+import { Account, JsonRpcProvider, PublicKey, Signer } from 'near-api-js';
 import { signMessage as signNep413Message } from 'near-api-js/nep413';
+import { base64 } from '@scure/base';
 
 import { hexSignatureToBytes, publicKeyFromImplicit, toNearAction } from '@/signing/utils';
-import type { SignOutParams } from '@/types';
 import type { PrivyNearWallet } from '@/signing/signer';
-
-type NativeSignAndSendTransactionArgs = Parameters<Account['signAndSendTransaction']>[0];
-type NativeSignAndSendTransactionResult = Awaited<ReturnType<Account['signAndSendTransaction']>>;
 
 /** RPC connection options for {@link JsonRpcProvider}. */
 export type RpcOptions = {
@@ -58,10 +60,6 @@ export function createProvider(network?: Network, rpcOptions?: RpcOptions): Json
 /**
  * near-api-js `Signer` implementation that delegates raw-byte signing to a
  * Privy embedded wallet.
- *
- * The base `Signer` class calls `signBytes` with the SHA-256 hash of the
- * serialised transaction, so this implementation forwards it directly to Privy
- * as a pre-hashed `hash` parameter.
  */
 export class PrivySigner extends Signer {
   constructor(private readonly privyConfig: PrivyConfig) {
@@ -121,19 +119,14 @@ export class CustomAccount extends Account {
    * @param params - Message parameters to sign.
    * @returns A signed message payload in the native `near-api-js` NEP-413 shape.
    */
-  async signMessage(params: SignMessageParams): Promise<SignedMessage> {
+  async signMessage(params: SignMessageParams): Promise<NearApiSignedMessage> {
     return signNep413Message({
       signerAccount: this,
       payload: params,
     });
   }
 
-  /**
-   * Returns the NEAR account information represented by this configured Privy wallet.
-   *
-   * @returns A single-account array matching near-connect's sign-in result shape.
-   */
-  async signIn(): Promise<NearConnectAccount[]> {
+  async signIn(_data?: SignInParams): Promise<NearConnectAccount[]> {
     return [
       {
         accountId: this.privyConfig.wallet.address,
@@ -142,56 +135,37 @@ export class CustomAccount extends Account {
     ];
   }
 
-  /**
-   * Removes a function-call access key from this configured wallet account.
-   *
-   * @param params - Key deletion parameters including the target public key.
-   * @returns The final execution outcome from the NEAR network.
-   */
-  async signOut(params: SignOutParams): Promise<FinalExecutionOutcome> {
-    return (await this.signAndSendTransaction({
-      receiverId: this.privyConfig.wallet.address,
-      actions: [actions.deleteKey(PublicKey.fromString(params.publicKey))],
-    })) as unknown as FinalExecutionOutcome;
+  async signOut(_data?: { network?: Network }): Promise<void> {}
+
+  async signAndSendTransaction(params: SignAndSendTransactionParams) {
+    return super.signAndSendTransaction({
+      receiverId: params.receiverId,
+      actions: params.actions.map(toNearAction),
+    });
+  }
+
+  async signAndSendTransactions(params: SignAndSendTransactionsParams) {
+    return super.signAndSendTransactions({
+      transactions: params.transactions.map((tx) => ({
+        receiverId: tx.receiverId,
+        actions: tx.actions.map(toNearAction),
+      })),
+    });
   }
 
   /**
-   * Signs and submits a NEAR transaction using this account's embedded-wallet signer.
+   * near-connect shim: signs a NEP-413 message and returns the result in the
+   * {@link NearWalletBase.signMessage} shape — string `publicKey` and base64 `signature`.
    *
-   * Accepts either the native near-api-js transaction args or the connector-style
-   * `SignAndSendTransactionParams` payload and normalises connector actions as needed.
-   *
-   * @param params - Native near-api-js transaction args or connector transaction params.
-   * @returns The final execution outcome from the NEAR network.
+   * @param params - Message parameters to sign.
+   * @returns A signed message matching the near-connect {@link NcSignedMessage} contract.
    */
-  async signAndSendTransaction(
-    params: SignAndSendTransactionParams,
-  ): Promise<FinalExecutionOutcome>;
-  async signAndSendTransaction(
-    params: NativeSignAndSendTransactionArgs,
-  ): Promise<NativeSignAndSendTransactionResult>;
-  async signAndSendTransaction(
-    params: NativeSignAndSendTransactionArgs | SignAndSendTransactionParams,
-  ): Promise<NativeSignAndSendTransactionResult | FinalExecutionOutcome> {
-    if (isConnectorTransactionParams(params)) {
-      return (await super.signAndSendTransaction({
-        receiverId: params.receiverId,
-        actions: params.actions.map(toNearAction),
-      })) as unknown as FinalExecutionOutcome;
-    }
-
-    return super.signAndSendTransaction(params);
+  async ncSignMessage(params: SignMessageParams): Promise<NcSignedMessage> {
+    const { accountId, publicKey, signature } = await this.signMessage(params);
+    return {
+      accountId,
+      publicKey: publicKey.toString(),
+      signature: base64.encode(signature),
+    };
   }
-}
-
-function isConnectorTransactionParams(
-  params: NativeSignAndSendTransactionArgs | SignAndSendTransactionParams,
-): params is SignAndSendTransactionParams {
-  return (
-    'network' in params ||
-    'signerId' in params ||
-    params.actions.some(
-      (action) => typeof action === 'object' && action !== null && 'type' in action,
-    )
-  );
 }

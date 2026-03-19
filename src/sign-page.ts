@@ -123,7 +123,6 @@ export const initSigningPage = async (
   options?: SignPageOptions,
 ): Promise<SignPageSession> => {
   if (!window.opener) throw new NoOpenerError();
-  if (options?.allowedOrigin === '*') throw new Error(INVALID_ORIGIN_ERROR_MESSAGE);
 
   let target = options?.allowedOrigin;
   if (!target) {

@@ -10,7 +10,6 @@ import { PublicKey } from 'near-api-js';
 import { CustomAccount, PrivySigner, createProvider, type PrivyConfig } from '@/signing/account';
 import type { PrivyNearWallet } from '@/signing/signer';
 import { publicKeyFromImplicit } from '@/signing/utils';
-import type { SignOutParams } from '@/types';
 
 vi.mock('@privy-io/js-sdk-core', async () => {
   const actual = await vi.importActual('@privy-io/js-sdk-core');
@@ -22,10 +21,6 @@ vi.mock('@privy-io/js-sdk-core', async () => {
 
 const TEST_WALLET_ADDRESS = '718c0ad670786cc74ed01f50c063361531b42417f78d04f691b9c8e21923c5d8';
 const TEST_WALLET_ID = 'wallet-id';
-const TEST_SIGN_OUT_PARAMS: SignOutParams = {
-  network: 'testnet',
-  publicKey: 'ed25519:11111111111111111111111111111111',
-};
 const TEST_OUTCOME = {
   status: { SuccessValue: '' },
   transaction: {},
@@ -151,18 +146,8 @@ describe('signIn()', () => {
 });
 
 describe('signOut()', () => {
-  it('deletes the requested public key from the wallet account', async () => {
-    const signAndSendTransaction = vi
-      .spyOn(CustomAccount.prototype, 'signAndSendTransaction')
-      .mockResolvedValue(TEST_OUTCOME as never);
+  it('resolves with void (no-op)', async () => {
     const account = new CustomAccount(makeConfig(), createProvider());
-
-    const result = await account.signOut(TEST_SIGN_OUT_PARAMS);
-
-    expect(signAndSendTransaction).toHaveBeenCalledTimes(1);
-    const [input] = signAndSendTransaction.mock.calls[0]!;
-    expect(input.receiverId).toBe(TEST_WALLET_ADDRESS);
-    expect(input.actions).toHaveLength(1);
-    expect(result).toBe(TEST_OUTCOME);
+    await expect(account.signOut()).resolves.toBeUndefined();
   });
 });
