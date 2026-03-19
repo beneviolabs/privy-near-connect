@@ -54,13 +54,52 @@ const TEST_OUTCOME = {
   receipts_outcome: [],
 } as unknown as FinalExecutionOutcome;
 
+// A 44-char base58 string representing a mock NEAR block hash (32 bytes)
+const MOCK_BLOCK_HASH = 'GkdxkzUeNhg9QZSr1Y9yrjXgDzs1oiLRhBNF5M9JHbmv';
+
 function mockPrivy(): Privy {
   return {} as unknown as Privy;
+}
+
+function mockRpcFetch() {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
+      const body = JSON.parse(init?.body as string) as { method: string };
+
+      if (body.method === 'query') {
+        // view_access_key response — provides the current nonce
+        return Promise.resolve({
+          json: () =>
+            Promise.resolve({
+              result: { nonce: 0, permission: 'FullAccess', block_hash: MOCK_BLOCK_HASH, block_height: 1 },
+            }),
+        });
+      }
+
+      if (body.method === 'block') {
+        // block response — provides the recent block hash for the transaction
+        return Promise.resolve({
+          json: () =>
+            Promise.resolve({
+              result: { header: { hash: MOCK_BLOCK_HASH } },
+            }),
+        });
+      }
+
+      return Promise.reject(new Error(`Unexpected RPC method: ${body.method}`));
+    }),
+  );
 }
 
 describe('signTransaction()', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRpcFetch();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('signs a two-action transaction with Privy rawSign using a bytes payload', async () => {
@@ -81,9 +120,7 @@ describe('signTransaction()', () => {
     expect(input).toMatchObject({
       wallet_id: TEST_WALLET_ID,
       params: {
-        bytes: expect.any(String),
-        encoding: 'base64',
-        hash_function: 'sha256',
+        hash: expect.stringMatching(/^0x[0-9a-f]{64}$/),
       },
     });
     expect(TEST_PARAMS.actions).toHaveLength(2);
@@ -165,10 +202,12 @@ describe('signAndSendTransaction()', () => {
       TEST_WALLET_ADDRESS,
       expect.any(Object),
       TEST_WALLET_ID,
+      undefined,
     );
     expect(transactions.transactionOperations.sendTransaction).toHaveBeenCalledWith(
       TEST_SIGNED_TRANSACTION,
       TEST_PARAMS.network,
+      undefined,
     );
     expect(result).toBe(TEST_OUTCOME);
   });
