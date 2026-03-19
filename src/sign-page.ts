@@ -24,7 +24,7 @@ export type SignPageOptions = {
 export type SignPageSession = {
   /** Payload received from the opener via `SIGN_REQUEST`. */
   payload: SigningPayload;
-  /** Signs the payload using Privy and posts the result to the opener exactly once. */
+  /** Signs the payload using Privy and posts the result to the opener. */
   sign: () => Promise<void>;
 };
 
