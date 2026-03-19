@@ -2,7 +2,7 @@ import type Privy from '@privy-io/js-sdk-core';
 
 import { NoOpenerError, TimeoutError } from '@/sign-page.errors';
 import { buildSignFn } from '@/signing/signer';
-import type { PrivyNearWallet } from '@/signing/signer';
+import type { PrivyNearWallet, RpcOptions } from '@/signing/signer';
 import type { ChannelMsg, SigningPayload } from '@/types';
 
 const DEFAULT_SIGN_REQUEST_TIMEOUT_MS = 30_000;
@@ -16,8 +16,10 @@ export type SignPageOptions = {
   timeout?: number;
   /** Exact trusted origin to use for postMessage target and message filtering. Defaults to `window.opener.location.origin` when same-origin access is available. */
   allowedOrigin?: string;
-  /** Wallet to use during signing. If omitted, it is fetched from `privy.user.get()` during signing. */
+  /** Privy NEAR wallet to use during signing. If omitted, the wallet is fetched from `privy.user.get()` during signing. */
   wallet?: PrivyNearWallet;
+  /** RPC connection options forwarded to {@link signAndSendTransaction} for transaction payloads. Defaults to the public RPC for the payload's network. */
+  rpcOptions?: RpcOptions;
 };
 
 /** Session returned by `initSigningPage` after receiving a signing payload. */
@@ -143,6 +145,6 @@ export const initSigningPage = async (
 
   return {
     payload,
-    sign: buildSignFn(target, privy, payload, options?.wallet),
+    sign: buildSignFn(target, privy, payload, options?.wallet, options?.rpcOptions),
   };
 };

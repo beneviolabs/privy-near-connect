@@ -55,6 +55,7 @@
     "@privy-io/js-sdk-core": "^0.60.5",
     "@scure/base": "^2.0.0",
     "borsh": "^2.0.0",
-    "near-api-js": "^7.2.0"
+    "near-api-js": "^7.2.0",
+    "viem": "^2.47.5"
   }
 }
