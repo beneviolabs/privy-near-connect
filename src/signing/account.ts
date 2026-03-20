@@ -4,6 +4,7 @@ import type Privy from '@privy-io/js-sdk-core';
 import type {
   SignAndSendTransactionParams,
   SignAndSendTransactionsParams,
+  SignDelegateActionsParams,
   SignMessageParams,
 } from '@hot-labs/near-connect';
 import type {
@@ -11,9 +12,10 @@ import type {
   Network,
   SignedMessage as NcSignedMessage,
   SignInParams,
+  SignDelegateActionsResponse,
 } from '@hot-labs/near-connect/build/types/index.js';
 import type { SignedMessage as NearApiSignedMessage } from 'near-api-js';
-import { Account, JsonRpcProvider, PublicKey, Signer } from 'near-api-js';
+import { Account, JsonRpcProvider, PublicKey, Signer, encodeSignedDelegate } from 'near-api-js';
 import { signMessage as signNep413Message } from 'near-api-js/nep413';
 import { base64 } from '@scure/base';
 
@@ -187,5 +189,25 @@ export class CustomAccount extends Account {
       publicKey: publicKey.toString(),
       signature: base64.encode(signature),
     };
+  }
+
+  /**
+   * near-connect shim: creates and signs a meta-transaction (delegate action) for each
+   * entry in `params.delegateActions`, returning each borsh-serialised
+   * {@link SignedDelegate} as a base64 string.
+   **/
+  async ncSignDelegateActions(
+    params: SignDelegateActionsParams,
+  ): Promise<SignDelegateActionsResponse> {
+    const signedDelegateActions = await Promise.all(
+      params.delegateActions.map(async ({ receiverId, actions }) => {
+        const { signedDelegate } = await this.createSignedMetaTransaction({
+          receiverId,
+          actions: actions.map(toNearAction),
+        });
+        return base64.encode(encodeSignedDelegate(signedDelegate));
+      }),
+    );
+    return { signedDelegateActions };
   }
 }

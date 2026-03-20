@@ -76,6 +76,21 @@ const TEST_SIGN_OUT_PAYLOAD = {
   network: 'mainnet',
 };
 
+const TEST_DELEGATE_PAYLOAD = {
+  kind: 'signDelegateActions',
+  network: 'mainnet',
+  delegateActions: [
+    {
+      receiverId: GUEST_BOOK_RECEIVER_ID,
+      actions: [guestBookCall1],
+    },
+    {
+      receiverId: GUEST_BOOK_RECEIVER_ID,
+      actions: [guestBookCall2],
+    },
+  ],
+};
+
 function openSigningPopup(
   payload: unknown,
   setStatus: (status: Status) => void,
@@ -139,6 +154,10 @@ export default function App() {
     openSigningPopup(TEST_TXS_PAYLOAD, setStatus, setResult, setErrorMsg);
   }
 
+  function handleSignDelegateActions() {
+    openSigningPopup(TEST_DELEGATE_PAYLOAD, setStatus, setResult, setErrorMsg);
+  }
+
   return (
     <div>
       <h1>privy-near-connect example</h1>
@@ -167,6 +186,13 @@ export default function App() {
         disabled={status === 'opening' || status === 'waiting'}
       >
         Sign & Send Transactions
+      </button>
+
+      <button
+        onClick={handleSignDelegateActions}
+        disabled={status === 'opening' || status === 'waiting'}
+      >
+        Sign Delegate Actions
       </button>
 
       <p>Status: {status}</p>

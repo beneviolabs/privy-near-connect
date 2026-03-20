@@ -1,19 +1,20 @@
 import type {
   SignAndSendTransactionsParams,
   SignAndSendTransactionParams,
+  SignDelegateActionsParams,
   SignMessageParams,
 } from '@hot-labs/near-connect';
 import type { FinalExecutionOutcome } from '@near-js/types';
 import type {
   Account,
-  Network,
   SignedMessage,
-  SignInParams,
+  SignDelegateActionsResponse,
 } from '@hot-labs/near-connect/build/types/index.js';
 
 export type {
   SignAndSendTransactionsParams,
   SignAndSendTransactionParams,
+  SignDelegateActionsParams,
   SignMessageParams,
 } from '@hot-labs/near-connect';
 export type { FinalExecutionOutcome } from '@near-js/types';
@@ -22,6 +23,7 @@ export type {
   Network,
   SignedMessage,
   SignInParams,
+  SignDelegateActionsResponse,
 } from '@hot-labs/near-connect/build/types/index.js';
 
 /**
@@ -34,11 +36,13 @@ export type {
 export type SigningPayload =
   | ({ kind: 'signMessage' } & SignMessageParams)
   | ({ kind: 'signAndSendTransaction' } & SignAndSendTransactionParams)
-  | ({ kind: 'signAndSendTransactions' } & SignAndSendTransactionsParams);
+  | ({ kind: 'signAndSendTransactions' } & SignAndSendTransactionsParams)
+  | ({ kind: 'signDelegateActions' } & SignDelegateActionsParams);
 
 /** Union of all result types that can be returned by a signer. */
 export type SigningResult =
   | SignedMessage
+  | SignDelegateActionsResponse
   | FinalExecutionOutcome
   | FinalExecutionOutcome[]
   | Account[]

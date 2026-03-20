@@ -2,7 +2,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type Privy from '@privy-io/js-sdk-core';
 import type { FinalExecutionOutcome } from '@near-js/types';
-import type { Account } from '@hot-labs/near-connect/build/types/index.js';
 
 import type { SignedMessage } from '@hot-labs/near-connect/build/types/index.js';
 import {
@@ -10,7 +9,6 @@ import {
   UnsupportedSigningPayloadError,
   WindowOpenerClosedError,
 } from '@/signing/errors';
-import { publicKeyFromImplicit } from '@/signing/utils';
 import { buildSignFn, type PrivyNearWallet } from '@/signing/signer';
 import type { SigningPayload } from '@/types';
 
@@ -52,16 +50,6 @@ const TEST_TXS_PAYLOAD = {
   ],
 };
 
-const TEST_SIGN_IN_PAYLOAD: SigningPayload = {
-  kind: 'signIn',
-  network: 'testnet',
-};
-
-const TEST_SIGN_OUT_PAYLOAD: SigningPayload = {
-  kind: 'signOut',
-  network: 'testnet',
-};
-
 const TEST_BATCH_PAYLOAD: SigningPayload = {
   kind: 'signAndSendTransactions',
   ...TEST_TXS_PAYLOAD,
@@ -76,16 +64,7 @@ const TEST_TX_RESULT = {
 
 const TEST_TX_RESULTS = [TEST_TX_RESULT, TEST_TX_RESULT] as FinalExecutionOutcome[];
 
-const TEST_SIGN_IN_RESULT: Account[] = [
-  {
-    accountId: TEST_WALLET_ADDRESS,
-    publicKey: publicKeyFromImplicit(TEST_WALLET_ADDRESS).toString(),
-  },
-];
-
 let mockAccountInstance: {
-  signIn: ReturnType<typeof vi.fn>;
-  signOut: ReturnType<typeof vi.fn>;
   ncSignMessage: ReturnType<typeof vi.fn>;
   signAndSendTransaction: ReturnType<typeof vi.fn>;
   signAndSendTransactions: ReturnType<typeof vi.fn>;
@@ -136,8 +115,6 @@ function mockPrivy(): MockPrivy {
 describe('buildSignFn()', () => {
   beforeEach(() => {
     mockAccountInstance = {
-      signIn: vi.fn().mockResolvedValue(TEST_SIGN_IN_RESULT),
-      signOut: vi.fn().mockResolvedValue(undefined),
       ncSignMessage: vi.fn().mockResolvedValue(TEST_RESULT),
       signAndSendTransaction: vi.fn().mockResolvedValue(TEST_TX_RESULT),
       signAndSendTransactions: vi.fn().mockResolvedValue(TEST_TX_RESULTS),
@@ -197,34 +174,6 @@ describe('buildSignFn()', () => {
     expect(mockAccountInstance.signAndSendTransaction).toHaveBeenCalled();
     expect(opener.postMessage).toHaveBeenCalledWith(
       { type: 'RESULT', result: TEST_TX_RESULT },
-      TEST_TARGET,
-    );
-    expect(window.close).toHaveBeenCalled();
-  });
-
-  it('returns account info for signIn requests', async () => {
-    const opener = mockOpener();
-    const sign = buildSignFn(TEST_TARGET, mockPrivy(), TEST_SIGN_IN_PAYLOAD, TEST_WALLET);
-
-    await sign();
-
-    expect(mockAccountInstance.signIn).toHaveBeenCalledWith(TEST_SIGN_IN_PAYLOAD);
-    expect(opener.postMessage).toHaveBeenCalledWith(
-      { type: 'RESULT', result: TEST_SIGN_IN_RESULT },
-      TEST_TARGET,
-    );
-    expect(window.close).toHaveBeenCalled();
-  });
-
-  it('routes signOut requests and posts void RESULT', async () => {
-    const opener = mockOpener();
-    const sign = buildSignFn(TEST_TARGET, mockPrivy(), TEST_SIGN_OUT_PAYLOAD, TEST_WALLET);
-
-    await sign();
-
-    expect(mockAccountInstance.signOut).toHaveBeenCalledWith(TEST_SIGN_OUT_PAYLOAD);
-    expect(opener.postMessage).toHaveBeenCalledWith(
-      { type: 'RESULT', result: undefined },
       TEST_TARGET,
     );
     expect(window.close).toHaveBeenCalled();

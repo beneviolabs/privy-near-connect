@@ -93,6 +93,9 @@ export function buildSignFn(
       case 'signAndSendTransactions':
         result = (await account.signAndSendTransactions(payload)) as unknown as SigningResult;
         break;
+      case 'signDelegateActions':
+        result = await account.ncSignDelegateActions(payload);
+        break;
       default:
         throw new UnsupportedSigningPayloadError();
     }
