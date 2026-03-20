@@ -2,8 +2,11 @@ name: privy-near-connect-ci
 
 on:
   pull_request:
-    paths:
-      - "**"
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   checks:
@@ -18,10 +21,12 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - name: Install dependencies
-        run: npm install
-      - name: Typecheck
-        run: npm run typecheck
+        run: npm ci
+      - name: Verify formatting
+        run: npm run format:check
       - name: Lint
         run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
       - name: Test
         run: npm run test

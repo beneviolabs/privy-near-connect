@@ -7,9 +7,9 @@ export type PrivyNearExecutor = {
 };
 
 export const createPrivyNearExecutor = (
-  options: PrivyNearExecutorOptions = {}
+  options: PrivyNearExecutorOptions = {},
 ): PrivyNearExecutor => {
   return {
-    options
+    options,
   };
 };

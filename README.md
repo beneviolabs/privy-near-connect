@@ -2,22 +2,31 @@
 
 Privy wallet adapter for near-connect.
 
-## Development
+## Tests
 
 ```bash
 npm install
-npm run typecheck
-npm run lint
 npm run test
-npm run build
 ```
 
-## TSUP
+## Example app
 
-Uses tsup - a TypeScript/JavaScript bundler built on top of esbuild. It compiles TS/JS into distributable
-output quickly and can emit .d.ts type declarations, handle multiple entry points, and generate ESM/CJS
-bundles with sourcemaps.
+The React example in [examples/react](examples/react) provides a simple sign-message UI.
 
-In this scaffold it’s used to build two entry points:
-  - src/executor.ts → dist/executor.js + dist/executor.d.ts
-  - src/sign-page.ts → dist/sign-page.js + dist/sign-page.d.ts
+Run the library in watch mode in one terminal:
+
+```bash
+npm run build:watch
+```
+
+Then run the example app in another:
+
+```bash
+cd examples/react
+npm install
+npm run dev
+```
+
+Open the app at http://localhost:5173.
+
+## FAQ and Troubleshooting
