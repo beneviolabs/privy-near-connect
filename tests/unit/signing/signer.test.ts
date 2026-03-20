@@ -3,7 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type Privy from '@privy-io/js-sdk-core';
 import type { FinalExecutionOutcome } from '@near-js/types';
 
-import type { SignedMessage } from '@hot-labs/near-connect/build/types/index.js';
+import type {
+  SignedMessage,
+  SignDelegateActionsResponse,
+} from '@hot-labs/near-connect/build/types/index.js';
 import {
   NoNearWalletError,
   UnsupportedSigningPayloadError,
@@ -43,6 +46,16 @@ const TEST_TX_PAYLOAD: SigningPayload = {
   actions: [],
 };
 
+const TEST_DELEGATE_PAYLOAD: SigningPayload = {
+  kind: 'signDelegateActions',
+  network: 'mainnet',
+  delegateActions: [{ receiverId: 'bob.near', actions: [] }],
+};
+
+const TEST_DELEGATE_RESULT: SignDelegateActionsResponse = {
+  signedDelegateActions: ['base64action=='],
+};
+
 const TEST_TXS_PAYLOAD = {
   transactions: [
     { receiverId: 'bob.near', actions: [] },
@@ -68,6 +81,7 @@ let mockAccountInstance: {
   ncSignMessage: ReturnType<typeof vi.fn>;
   signAndSendTransaction: ReturnType<typeof vi.fn>;
   signAndSendTransactions: ReturnType<typeof vi.fn>;
+  ncSignDelegateActions: ReturnType<typeof vi.fn>;
 };
 
 type MockPrivy = Privy & {
@@ -118,6 +132,7 @@ describe('buildSignFn()', () => {
       ncSignMessage: vi.fn().mockResolvedValue(TEST_RESULT),
       signAndSendTransaction: vi.fn().mockResolvedValue(TEST_TX_RESULT),
       signAndSendTransactions: vi.fn().mockResolvedValue(TEST_TX_RESULTS),
+      ncSignDelegateActions: vi.fn().mockResolvedValue(TEST_DELEGATE_RESULT),
     };
     mockOpener();
     vi.stubGlobal('close', vi.fn());
@@ -190,6 +205,20 @@ describe('buildSignFn()', () => {
       { type: 'RESULT', result: TEST_TX_RESULTS },
       TEST_TARGET,
     );
+  });
+
+  it('routes signDelegateActions payload to account.ncSignDelegateActions and posts RESULT', async () => {
+    const opener = mockOpener();
+    const sign = buildSignFn(TEST_TARGET, mockPrivy(), TEST_DELEGATE_PAYLOAD, TEST_WALLET);
+
+    await sign();
+
+    expect(mockAccountInstance.ncSignDelegateActions).toHaveBeenCalledWith(TEST_DELEGATE_PAYLOAD);
+    expect(opener.postMessage).toHaveBeenCalledWith(
+      { type: 'RESULT', result: TEST_DELEGATE_RESULT },
+      TEST_TARGET,
+    );
+    expect(window.close).toHaveBeenCalled();
   });
 
   it('fetches the user wallet only when wallet is not provided', async () => {

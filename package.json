@@ -33,12 +33,14 @@
     "format": "prettier --write src tests",
     "format:check": "prettier --check src tests",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
     "@eslint/js": "^9.12.0",
     "@types/node": "^22.7.8",
+    "@vitest/coverage-v8": "^2.1.9",
     "eslint": "^9.12.0",
     "happy-dom": "^20.8.4",
     "prettier": "^3.8.1",

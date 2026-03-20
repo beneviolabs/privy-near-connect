@@ -27,17 +27,6 @@ export function hexSignatureToBytes(hexSignature: string): Uint8Array {
 }
 
 /**
- * Verify a signature against a message hash.
- */
-export function verifySignature(
-  publicKey: PublicKey,
-  messageHash: Uint8Array,
-  signature: Uint8Array,
-): boolean {
-  return publicKey.verify(messageHash, signature);
-}
-
-/**
  * Converts a `ConnectorAction` or native near-api-js `Action` to a near-api-js `Action`.
  *
  * `ConnectorAction` (from `@hot-labs/near-connect`) has a `type` string discriminant;
