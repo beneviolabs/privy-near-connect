@@ -37,10 +37,12 @@ function mountPrivyIframe(privy: Privy): Promise<() => void> {
   return new Promise((resolve) => {
     const mountedIframe = document.querySelector('iframe[data-privy-embed]');
     if (mountedIframe && cleanupMountedIframe) {
+      console.debug(LOG_PREFIX, '↺ Reusing existing Privy iframe');
       resolve(cleanupMountedIframe);
       return;
     }
 
+    console.debug(LOG_PREFIX, '↻ Mounting Privy iframe');
     cleanupMountedIframe = undefined;
 
     const iframe = document.createElement('iframe');
@@ -58,6 +60,7 @@ function mountPrivyIframe(privy: Privy): Promise<() => void> {
     const cleanup = () => {
       if (cleanedUp) return;
       cleanedUp = true;
+      console.debug(LOG_PREFIX, '↻ Cleaning up existing Privy iframe');
       window.removeEventListener('message', onMessage);
       iframe.remove();
       if (cleanupMountedIframe === cleanup) cleanupMountedIframe = undefined;
@@ -73,6 +76,7 @@ function mountPrivyIframe(privy: Privy): Promise<() => void> {
             iframe.src = privy.embeddedWallet.getURL();
           },
         });
+        console.debug(LOG_PREFIX, '✓ Privy iframe loaded and message poster set');
         cleanupMountedIframe = cleanup;
         resolve(cleanup);
       },
@@ -87,6 +91,8 @@ function mountPrivyIframe(privy: Privy): Promise<() => void> {
 
 function waitForOpenerSignRequest(allowedOrigin: string, timeout: number): Promise<SigningPayload> {
   return new Promise((resolve, reject) => {
+    console.debug(LOG_PREFIX, '… Waiting for SIGN_REQUEST', { allowedOrigin, timeout });
+
     const cleanup = () => {
       clearTimeout(timeoutId);
       window.removeEventListener('message', onMessage);
@@ -97,6 +103,7 @@ function waitForOpenerSignRequest(allowedOrigin: string, timeout: number): Promi
       const msg = event.data as ChannelMsg;
       if (!msg || msg.type !== 'SIGN_REQUEST') return;
       cleanup();
+      console.debug(LOG_PREFIX, '← SIGN_REQUEST received', msg.payload);
       resolve(msg.payload);
     };
 
@@ -104,6 +111,7 @@ function waitForOpenerSignRequest(allowedOrigin: string, timeout: number): Promi
 
     const timeoutId = setTimeout(() => {
       cleanup();
+      console.debug(LOG_PREFIX, '✗ SIGN_REQUEST timed out', { timeout });
       reject(new TimeoutError(timeout));
     }, timeout);
   });
@@ -123,6 +131,7 @@ export const initSigningPage = async (
   privy: Privy,
   options?: SignPageOptions,
 ): Promise<SignPageSession> => {
+  console.debug(LOG_PREFIX, '→ initSigningPage start');
   if (!window.opener) throw new NoOpenerError();
 
   let target = options?.allowedOrigin;
@@ -144,7 +153,6 @@ export const initSigningPage = async (
     target,
     options?.timeout ?? DEFAULT_SIGN_REQUEST_TIMEOUT_MS,
   );
-  console.debug(LOG_PREFIX, '← SIGN_REQUEST received', payload);
 
   return {
     payload,

@@ -42,6 +42,7 @@ function isPrivyNearWallet(account: unknown): account is PrivyNearWallet {
 
 async function getUserNearWallet(privy: Privy): Promise<PrivyNearWallet> {
   const { user } = await privy.user.get();
+  console.debug(LOG_PREFIX, 'User linked accounts fetched', { accounts: user.linked_accounts });
   for (const account of user.linked_accounts) {
     if (isPrivyNearWallet(account)) return account;
   }
@@ -71,6 +72,7 @@ export function buildSignFn(
   rpcOptions?: RpcOptions,
 ): () => Promise<void> {
   return async () => {
+    console.debug(LOG_PREFIX, '→ sign() start', { target, kind: payload.kind });
     if (!window.opener) throw new WindowOpenerClosedError();
     if (typeof payload !== 'object' || payload === null || !('kind' in payload)) {
       throw new UnsupportedSigningPayloadError();

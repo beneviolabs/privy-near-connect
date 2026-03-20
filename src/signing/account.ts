@@ -19,6 +19,7 @@ import { Account, JsonRpcProvider, PublicKey, Signer, encodeSignedDelegate } fro
 import { signMessage as signNep413Message } from 'near-api-js/nep413';
 import { base64 } from '@scure/base';
 
+import { LOG_PREFIX } from '@/log';
 import { hexSignatureToBytes, publicKeyFromImplicit, toNearAction } from '@/signing/utils';
 import type { PrivyNearWallet } from '@/signing/signer';
 
@@ -56,7 +57,10 @@ const NEAR_RPC_URLS: Record<Network, string> = {
  * @returns A configured `JsonRpcProvider`.
  */
 export function createProvider(network?: Network, rpcOptions?: RpcOptions): JsonRpcProvider {
-  return new JsonRpcProvider({ url: rpcOptions?.url ?? NEAR_RPC_URLS[network ?? 'mainnet'] });
+  const resolvedNetwork = network ?? 'mainnet';
+  const url = rpcOptions?.url ?? NEAR_RPC_URLS[resolvedNetwork];
+  console.debug(LOG_PREFIX, 'Creating JsonRpcProvider', { network: resolvedNetwork, url });
+  return new JsonRpcProvider({ url });
 }
 
 /**
@@ -91,7 +95,11 @@ export class PrivySigner extends Signer {
         this.privyConfig.privyClient.embeddedWallet.signWithUserSigner(requestOptions),
       { wallet_id: this.privyConfig.wallet.id, params: { hash } },
     );
-    return hexSignatureToBytes(hexSignature);
+    const signatureBytes = hexSignatureToBytes(hexSignature);
+    console.debug(LOG_PREFIX, 'Privy RawSign succeeded', {
+      signatureLength: signatureBytes.length,
+    });
+    return signatureBytes;
   }
 }
 
