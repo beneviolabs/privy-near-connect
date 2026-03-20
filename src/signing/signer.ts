@@ -9,6 +9,7 @@ import {
 import { createProvider, CustomAccount } from '@/signing/account';
 import type { PrivyConfig, RpcOptions } from '@/signing/account';
 import type { ChannelMsg, SigningPayload, SigningResult } from '@/types';
+import { LOG_PREFIX } from '@/log';
 
 export type { RpcOptions } from '@/signing/account';
 
@@ -100,7 +101,9 @@ export function buildSignFn(
         throw new UnsupportedSigningPayloadError();
     }
 
-    (window.opener as Window).postMessage({ type: 'RESULT', result } satisfies ChannelMsg, target);
+    const resultMsg = { type: 'RESULT', result } satisfies ChannelMsg;
+    console.debug(LOG_PREFIX, '→ RESULT posted', resultMsg);
+    (window.opener as Window).postMessage(resultMsg, target);
     window.close();
   };
 }

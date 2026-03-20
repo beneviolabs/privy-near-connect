@@ -22,5 +22,7 @@ export default defineConfig({
       ...options.alias,
       '@': resolve(__dirname, 'src'),
     };
+    // Prevent debug logging in distributed code.
+    options.pure = ['console.debug'];
   },
 });

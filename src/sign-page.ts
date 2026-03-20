@@ -4,6 +4,7 @@ import { NoOpenerError, TimeoutError } from '@/sign-page.errors';
 import { buildSignFn } from '@/signing/signer';
 import type { PrivyNearWallet, RpcOptions } from '@/signing/signer';
 import type { ChannelMsg, SigningPayload } from '@/types';
+import { LOG_PREFIX } from '@/log';
 
 const DEFAULT_SIGN_REQUEST_TIMEOUT_MS = 30_000;
 const READY_MESSAGE = { type: 'READY' } as const satisfies ChannelMsg;
@@ -137,10 +138,13 @@ export const initSigningPage = async (
   await mountPrivyIframe(privy);
 
   (window.opener as Window).postMessage(READY_MESSAGE, target);
+  console.debug(LOG_PREFIX, '→ READY posted to', target);
+
   const payload = await waitForOpenerSignRequest(
     target,
     options?.timeout ?? DEFAULT_SIGN_REQUEST_TIMEOUT_MS,
   );
+  console.debug(LOG_PREFIX, '← SIGN_REQUEST received', payload);
 
   return {
     payload,
