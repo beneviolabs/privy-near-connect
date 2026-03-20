@@ -63,6 +63,12 @@ const TEST_TXS_PAYLOAD = {
 const TEST_SIGN_IN_PAYLOAD = {
   kind: 'signIn',
   network: 'mainnet',
+  addFunctionCallKey: {
+    contractId: GUEST_BOOK_RECEIVER_ID,
+    publicKey: 'ed25519:11111111111111111111111111111111',
+    allowMethods: { anyMethod: true },
+    gasAllowance: { kind: 'limited', amount: '250000000000000000000000' },
+  },
 };
 
 const TEST_SIGN_OUT_PAYLOAD = {

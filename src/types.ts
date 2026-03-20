@@ -34,9 +34,7 @@ export type {
 export type SigningPayload =
   | ({ kind: 'signMessage' } & SignMessageParams)
   | ({ kind: 'signAndSendTransaction' } & SignAndSendTransactionParams)
-  | ({ kind: 'signAndSendTransactions' } & SignAndSendTransactionsParams)
-  | ({ kind: 'signIn' } & SignInParams)
-  | ({ kind: 'signOut' } & { /** Optional NEAR network. */ network?: Network });
+  | ({ kind: 'signAndSendTransactions' } & SignAndSendTransactionsParams);
 
 /** Union of all result types that can be returned by a signer. */
 export type SigningResult =

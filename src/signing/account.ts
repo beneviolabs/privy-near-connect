@@ -98,6 +98,9 @@ export class PrivySigner extends Signer {
  *
  * Drop-in replacement for the standard `Account` wherever a Privy embedded wallet
  * should be the transaction signer.
+ *
+ * Most built-in method in puts and return types are compatible with NearConnector types but some
+ * which aren't or don't exist in near-api-js are implemented here and annotated with nc* prefix, e.g. {@link ncSignMessage}.
  */
 export class CustomAccount extends Account {
   /** The Privy signer used for all signing operations on this account. */
@@ -113,20 +116,37 @@ export class CustomAccount extends Account {
     this.privySigner = signer;
   }
 
-  /**
-   * Signs a NEP-413 message with this account's Privy-backed signer.
-   *
-   * @param params - Message parameters to sign.
-   * @returns A signed message payload in the native `near-api-js` NEP-413 shape.
-   */
-  async signMessage(params: SignMessageParams): Promise<NearApiSignedMessage> {
+  async _signMessage(params: SignMessageParams): Promise<NearApiSignedMessage> {
     return signNep413Message({
       signerAccount: this,
       payload: params,
     });
   }
 
-  async signIn(_data?: SignInParams): Promise<NearConnectAccount[]> {
+  /**
+   * Returns the NEAR account information for this wallet, optionally adding a
+   * function-call access key if {@link SignInParams.addFunctionCallKey} is provided.
+   *
+   * @param data - Optional sign-in parameters. When `addFunctionCallKey` is set, a
+   *   function-call access key is submitted on-chain before returning.
+   * @returns A single-account array matching {@link NearWalletBase.signIn} result shape.
+   */
+  async signIn(data?: SignInParams): Promise<NearConnectAccount[]> {
+    if (data?.addFunctionCallKey) {
+      const { contractId, publicKey, allowMethods, gasAllowance } = data.addFunctionCallKey;
+      await this.addFunctionCallAccessKey({
+        contractId,
+        publicKey,
+        methodNames: allowMethods.anyMethod ? [] : allowMethods.methodNames,
+        allowance: gasAllowance?.kind === 'limited' ? BigInt(gasAllowance.amount) : undefined,
+      });
+      return [
+        {
+          accountId: this.privyConfig.wallet.address,
+          publicKey,
+        },
+      ];
+    }
     return [
       {
         accountId: this.privyConfig.wallet.address,
@@ -161,7 +181,7 @@ export class CustomAccount extends Account {
    * @returns A signed message matching the near-connect {@link NcSignedMessage} contract.
    */
   async ncSignMessage(params: SignMessageParams): Promise<NcSignedMessage> {
-    const { accountId, publicKey, signature } = await this.signMessage(params);
+    const { accountId, publicKey, signature } = await this._signMessage(params);
     return {
       accountId,
       publicKey: publicKey.toString(),

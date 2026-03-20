@@ -4,8 +4,6 @@ import { rawSign } from '@privy-io/js-sdk-core';
 import type Privy from '@privy-io/js-sdk-core';
 import type { SignMessageParams } from '@hot-labs/near-connect';
 import { KeyPairEd25519, keyToImplicitAddress } from '@near-js/crypto';
-import type { FinalExecutionOutcome } from '@near-js/types';
-import { PublicKey } from 'near-api-js';
 
 import { CustomAccount, PrivySigner, createProvider, type PrivyConfig } from '@/signing/account';
 import type { PrivyNearWallet } from '@/signing/signer';
@@ -21,12 +19,12 @@ vi.mock('@privy-io/js-sdk-core', async () => {
 
 const TEST_WALLET_ADDRESS = '718c0ad670786cc74ed01f50c063361531b42417f78d04f691b9c8e21923c5d8';
 const TEST_WALLET_ID = 'wallet-id';
-const TEST_OUTCOME = {
-  status: { SuccessValue: '' },
-  transaction: {},
-  transaction_outcome: {},
-  receipts_outcome: [],
-} as unknown as FinalExecutionOutcome;
+const TEST_MESSAGE_PARAMS: SignMessageParams = {
+  message: 'hello',
+  recipient: 'bob.near',
+  nonce: new Uint8Array(32),
+};
+const TEST_MESSAGE_HASH = '0xade28275749cd3c9891ba4f07f972662b1dbfd124767d94cc7cd45b3ffead154';
 
 function mockPrivy(): Privy {
   return {
@@ -82,14 +80,7 @@ describe('PrivySigner', () => {
   });
 });
 
-const TEST_MESSAGE_PARAMS: SignMessageParams = {
-  message: 'hello',
-  recipient: 'bob.near',
-  nonce: new Uint8Array(32),
-};
-const TEST_MESSAGE_HASH = '0xade28275749cd3c9891ba4f07f972662b1dbfd124767d94cc7cd45b3ffead154';
-
-describe('CustomAccount.signMessage()', () => {
+describe('ncSignMessage()', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('serializes the NEP-413 fixture into the expected hash', async () => {
@@ -100,7 +91,7 @@ describe('CustomAccount.signMessage()', () => {
 
     const walletAddress = keyToImplicitAddress(KeyPairEd25519.fromRandom().publicKey);
     const account = new CustomAccount(makeConfig(walletAddress), createProvider());
-    await account.signMessage(TEST_MESSAGE_PARAMS);
+    await account.ncSignMessage(TEST_MESSAGE_PARAMS);
 
     const [, , input] = vi.mocked(rawSign).mock.calls[0]!;
     expect(input).toMatchObject({ wallet_id: TEST_WALLET_ID, params: { hash: TEST_MESSAGE_HASH } });
@@ -114,12 +105,12 @@ describe('CustomAccount.signMessage()', () => {
 
     const walletAddress = keyToImplicitAddress(KeyPairEd25519.fromRandom().publicKey);
     const account = new CustomAccount(makeConfig(walletAddress), createProvider());
-    const result = await account.signMessage(TEST_MESSAGE_PARAMS);
+    const result = await account.ncSignMessage(TEST_MESSAGE_PARAMS);
 
     expect(result).toEqual({
       accountId: walletAddress,
-      publicKey: PublicKey.fromString(publicKeyFromImplicit(walletAddress).toString()),
-      signature: new Uint8Array([1, 2, 3]),
+      publicKey: publicKeyFromImplicit(walletAddress).toString(),
+      signature: 'AQID',
     });
   });
 
@@ -127,7 +118,7 @@ describe('CustomAccount.signMessage()', () => {
     vi.mocked(rawSign).mockRejectedValue(new Error('rawSign failed'));
     const account = new CustomAccount(makeConfig(), createProvider());
 
-    await expect(account.signMessage(TEST_MESSAGE_PARAMS)).rejects.toThrow('rawSign failed');
+    await expect(account.ncSignMessage(TEST_MESSAGE_PARAMS)).rejects.toThrow('rawSign failed');
   });
 });
 
@@ -142,6 +133,37 @@ describe('signIn()', () => {
         publicKey: publicKeyFromImplicit(TEST_WALLET_ADDRESS).toString(),
       },
     ]);
+  });
+
+  it('adds a function-call access key before returning when addFunctionCallKey is provided', async () => {
+    const addKey = vi
+      .spyOn(CustomAccount.prototype, 'addFunctionCallAccessKey')
+      .mockResolvedValue({} as never);
+    const account = new CustomAccount(makeConfig(), createProvider());
+
+    const result = await account.signIn({
+      addFunctionCallKey: {
+        contractId: 'guest-book.near',
+        publicKey: 'ed25519:11111111111111111111111111111111',
+        allowMethods: { anyMethod: false, methodNames: ['add_message'] },
+        gasAllowance: { kind: 'limited', amount: '250000000000000000000000' },
+      },
+    });
+
+    expect(addKey).toHaveBeenCalledWith({
+      contractId: 'guest-book.near',
+      publicKey: 'ed25519:11111111111111111111111111111111',
+      methodNames: ['add_message'],
+      allowance: BigInt('250000000000000000000000'),
+    });
+    expect(result).toEqual([
+      {
+        accountId: TEST_WALLET_ADDRESS,
+        publicKey: 'ed25519:11111111111111111111111111111111',
+      },
+    ]);
+
+    addKey.mockRestore();
   });
 });
 

@@ -84,12 +84,6 @@ export function buildSignFn(
 
     let result: SigningResult;
     switch (payload.kind) {
-      case 'signIn':
-        result = await account.signIn(payload);
-        break;
-      case 'signOut':
-        result = await account.signOut(payload);
-        break;
       case 'signMessage':
         result = await account.ncSignMessage(payload);
         break;
