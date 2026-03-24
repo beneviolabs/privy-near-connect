@@ -45,8 +45,8 @@ export type PrivyConfig = {
 };
 
 const NEAR_RPC_URLS: Record<Network, string> = {
-  mainnet: 'https://rpc.mainnet.near.org',
-  testnet: 'https://rpc.testnet.near.org',
+  mainnet: 'https://rpc.mainnet.fastnear.com',
+  testnet: 'https://rpc.testnet.fastnear.com',
 };
 
 /**
