@@ -1,31 +1,26 @@
 import type Privy from '@privy-io/js-sdk-core';
-import type { SignMessageParams } from '@hot-labs/near-connect';
+import type { LinkedAccountEmbeddedWallet } from '@privy-io/api-types';
 
 import {
   NoNearWalletError,
   UnsupportedSigningPayloadError,
   WindowOpenerClosedError,
 } from '@/signing/errors';
-import { signMessage } from '@/signing/message';
-import type { ChannelMsg, SigningPayload } from '@/types';
-import type { LinkedAccountEmbeddedWallet } from '@privy-io/api-types';
+import { createProvider, CustomAccount } from '@/signing/account';
+import type { PrivyConfig, RpcOptions } from '@/signing/account';
+import type { ChannelMsg, SigningPayload, SigningResult } from '@/types';
+import { LOG_PREFIX } from '@/log';
 
-/** Linked Privy NEAR wallet metadata used by the sign-page signer. */
+export type { RpcOptions } from '@/signing/account';
+
+/** Linked Privy NEAR wallet metadata. */
 export type PrivyNearWallet = LinkedAccountEmbeddedWallet & {
   chain_type: 'near';
+  /** Privy wallet ID. */
   id: string;
+  /** Implicit account address (hex-encoded public key). */
   address: string;
 };
-
-function isSignMessagePayload(payload: SigningPayload): payload is SignMessageParams {
-  return (
-    typeof payload === 'object' &&
-    payload !== null &&
-    'message' in payload &&
-    'nonce' in payload &&
-    'recipient' in payload
-  );
-}
 
 function isPrivyNearWallet(account: unknown): account is PrivyNearWallet {
   if (typeof account !== 'object' || account === null) return false;
@@ -47,6 +42,7 @@ function isPrivyNearWallet(account: unknown): account is PrivyNearWallet {
 
 async function getUserNearWallet(privy: Privy): Promise<PrivyNearWallet> {
   const { user } = await privy.user.get();
+  console.debug(LOG_PREFIX, 'User linked accounts fetched', { accounts: user.linked_accounts });
   for (const account of user.linked_accounts) {
     if (isPrivyNearWallet(account)) return account;
   }
@@ -60,11 +56,12 @@ async function getUserNearWallet(privy: Privy): Promise<PrivyNearWallet> {
  * @param target - postMessage target origin for opener communication.
  * @param privy - Initialized Privy client used for embedded-wallet signing.
  * @param payload - Payload received from opener via `SIGN_REQUEST`.
- * @param wallet - Optional preselected Privy NEAR wallet metadata.
+ * @param wallet - Optional preselected Privy NEAR wallet metadata. When omitted, the wallet is fetched from `privy.user.get()` during signing.
+ * @param rpcOptions - Optional RPC connection options forwarded to transaction signing.
  * @returns An async signer callback that signs the payload, posts `RESULT`, and closes the popup.
  * @throws {@link WindowOpenerClosedError} If `window.opener` is no longer available when the returned signer runs.
- * @throws {@link UnsupportedSigningPayloadError} If the payload is not a NEP-413 message payload.
- * @throws {@link NoNearWalletError} If no linked NEAR wallet is available and no wallet was provided.
+ * @throws {@link UnsupportedSigningPayloadError} If the payload is not a supported signer request.
+ * @throws {@link NoNearWalletError} If no linked NEAR wallet is available and no `wallet` was provided.
  * @throws {@link PrivyApiError} This comes from the Privy lib and is thrown if an error occurs during API calls.
  */
 export function buildSignFn(
@@ -72,15 +69,43 @@ export function buildSignFn(
   privy: Privy,
   payload: SigningPayload,
   wallet?: PrivyNearWallet,
+  rpcOptions?: RpcOptions,
 ): () => Promise<void> {
   return async () => {
+    console.debug(LOG_PREFIX, '→ sign() start', { target, kind: payload.kind });
     if (!window.opener) throw new WindowOpenerClosedError();
-    if (!isSignMessagePayload(payload)) throw new UnsupportedSigningPayloadError();
+    if (typeof payload !== 'object' || payload === null || !('kind' in payload)) {
+      throw new UnsupportedSigningPayloadError();
+    }
 
     const walletToUse = wallet ?? (await getUserNearWallet(privy));
+    const walletConfig: PrivyConfig = {
+      privyClient: privy,
+      wallet: walletToUse,
+    };
+    const account = new CustomAccount(walletConfig, createProvider(payload.network, rpcOptions));
 
-    const result = await signMessage(payload, walletToUse.address, privy, walletToUse.id);
-    (window.opener as Window).postMessage({ type: 'RESULT', result } satisfies ChannelMsg, target);
+    let result: SigningResult;
+    switch (payload.kind) {
+      case 'signMessage':
+        result = await account.ncSignMessage(payload);
+        break;
+      case 'signAndSendTransaction':
+        result = (await account.signAndSendTransaction(payload)) as unknown as SigningResult;
+        break;
+      case 'signAndSendTransactions':
+        result = (await account.signAndSendTransactions(payload)) as unknown as SigningResult;
+        break;
+      case 'signDelegateActions':
+        result = await account.ncSignDelegateActions(payload);
+        break;
+      default:
+        throw new UnsupportedSigningPayloadError();
+    }
+
+    const resultMsg = { type: 'RESULT', result } satisfies ChannelMsg;
+    console.debug(LOG_PREFIX, '→ RESULT posted', resultMsg);
+    (window.opener as Window).postMessage(resultMsg, target);
     window.close();
   };
 }

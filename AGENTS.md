@@ -5,7 +5,8 @@
 All public exports must have TSDoc comments. Follow these rules:
 
 - Use `/** ... */` block comments directly above the declaration.
-- Every exported function needs at minimum a summary line, `@param` tags for each parameter, and a `@returns` tag.
+- Every library function meant to be consumed by developers (i.e., public API) needs at minimum a summary line, `@param` tags for each parameter, and a `@returns` tag. Internal methods can do without
+them.
 - Exported types and classes need a summary line. Document each property of an exported type with an inline `/** ... */` comment.
 - Exported error classes need a summary line describing when they are thrown.
 - Do not add TSDoc to internal (non-exported) helpers.

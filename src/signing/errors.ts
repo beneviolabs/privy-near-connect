@@ -17,15 +17,9 @@ export class NoNearWalletError extends Error {
 /** Thrown when `sign` is called with a payload type that this signer does not support. */
 export class UnsupportedSigningPayloadError extends Error {
   constructor() {
-    super('Only NEP-413 signMessage payloads are currently supported');
+    super(
+      'Only messages, transaction and delegate action signing payloads are supported by this signer',
+    );
     this.name = 'UnsupportedSigningPayloadError';
-  }
-}
-
-/** Thrown when an optionally verified NEP-413 signature does not match the derived public key. */
-export class SignatureVerificationError extends Error {
-  constructor() {
-    super('NEP-413 signature verification failed');
-    this.name = 'SignatureVerificationError';
   }
 }

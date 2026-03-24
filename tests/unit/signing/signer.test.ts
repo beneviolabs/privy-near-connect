@@ -1,41 +1,98 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type Privy from '@privy-io/js-sdk-core';
-import type { SignMessageParams, SignedMessage } from '@hot-labs/near-connect';
+import type { FinalExecutionOutcome } from '@near-js/types';
 
+import type {
+  SignedMessage,
+  SignDelegateActionsResponse,
+} from '@hot-labs/near-connect/build/types/index.js';
 import {
   NoNearWalletError,
   UnsupportedSigningPayloadError,
   WindowOpenerClosedError,
 } from '@/signing/errors';
-import { signMessage } from '@/signing/message';
 import { buildSignFn, type PrivyNearWallet } from '@/signing/signer';
-
-vi.mock('@/signing/message', () => ({
-  signMessage: vi.fn(),
-}));
+import type { SigningPayload } from '@/types';
 
 const OPENER_ORIGIN = 'https://app.example.com';
 const TEST_TARGET = OPENER_ORIGIN;
 
-const TEST_PAYLOAD: SignMessageParams = {
+const TEST_WALLET_ADDRESS = '718c0ad670786cc74ed01f50c063361531b42417f78d04f691b9c8e21923c5d8';
+
+const TEST_PAYLOAD: SigningPayload = {
+  kind: 'signMessage',
   message: 'hello',
   recipient: 'bob.near',
   nonce: new Uint8Array(32),
 };
 
-const TEST_WALLET = {
+const TEST_WALLET: PrivyNearWallet = {
   type: 'wallet',
   chain_type: 'near',
   id: 'wallet-id',
-  address: '718c0ad670786cc74ed01f50c063361531b42417f78d04f691b9c8e21923c5d8',
+  address: TEST_WALLET_ADDRESS,
 } as PrivyNearWallet;
 
 const TEST_RESULT: SignedMessage = {
-  accountId: TEST_WALLET.address,
-  publicKey: 'ed25519:test-public-key',
-  signature: 'dGVzdC1zaWduYXR1cmU=',
+  accountId: TEST_WALLET_ADDRESS,
+  publicKey: 'ed25519:11111111111111111111111111111111',
+  signature: 'AQID',
 };
+
+const TEST_TX_PAYLOAD: SigningPayload = {
+  kind: 'signAndSendTransaction',
+  receiverId: 'bob.near',
+  actions: [],
+};
+
+const TEST_DELEGATE_PAYLOAD: SigningPayload = {
+  kind: 'signDelegateActions',
+  network: 'mainnet',
+  delegateActions: [{ receiverId: 'bob.near', actions: [] }],
+};
+
+const TEST_DELEGATE_RESULT: SignDelegateActionsResponse = {
+  signedDelegateActions: ['base64action=='],
+};
+
+const TEST_TXS_PAYLOAD = {
+  transactions: [
+    { receiverId: 'bob.near', actions: [] },
+    { receiverId: 'carol.near', actions: [] },
+  ],
+};
+
+const TEST_BATCH_PAYLOAD: SigningPayload = {
+  kind: 'signAndSendTransactions',
+  ...TEST_TXS_PAYLOAD,
+};
+
+const TEST_TX_RESULT = {
+  status: { SuccessValue: '' },
+  transaction: {},
+  transaction_outcome: {},
+  receipts_outcome: [],
+} as unknown as FinalExecutionOutcome;
+
+const TEST_TX_RESULTS = [TEST_TX_RESULT, TEST_TX_RESULT] as FinalExecutionOutcome[];
+
+let mockAccountInstance: {
+  ncSignMessage: ReturnType<typeof vi.fn>;
+  signAndSendTransaction: ReturnType<typeof vi.fn>;
+  signAndSendTransactions: ReturnType<typeof vi.fn>;
+  ncSignDelegateActions: ReturnType<typeof vi.fn>;
+};
+
+type MockPrivy = Privy & {
+  logout: ReturnType<typeof vi.fn>;
+};
+
+vi.mock('@/signing/account', async () => {
+  const actual = await vi.importActual('@/signing/account');
+  const MockCustomAccount = vi.fn().mockImplementation(() => mockAccountInstance);
+  return { ...actual, CustomAccount: MockCustomAccount };
+});
 
 function mockOpener() {
   const opener = { postMessage: vi.fn(), origin: OPENER_ORIGIN };
@@ -43,10 +100,22 @@ function mockOpener() {
   return opener;
 }
 
-function mockPrivy(): Privy {
+function mockPrivy(): MockPrivy {
   return {
+    logout: vi.fn().mockResolvedValue(undefined),
     user: {
-      get: vi.fn().mockResolvedValue({ user: { linked_accounts: [TEST_WALLET] } }),
+      get: vi.fn().mockResolvedValue({
+        user: {
+          linked_accounts: [
+            {
+              type: 'wallet',
+              chain_type: 'near',
+              id: TEST_WALLET.id,
+              address: TEST_WALLET.address,
+            },
+          ],
+        },
+      }),
     },
     embeddedWallet: {
       getURL: vi.fn(),
@@ -54,14 +123,19 @@ function mockPrivy(): Privy {
       signWithUserSigner: vi.fn(),
     },
     setMessagePoster: vi.fn(),
-  } as unknown as Privy;
+  } as unknown as MockPrivy;
 }
 
 describe('buildSignFn()', () => {
   beforeEach(() => {
+    mockAccountInstance = {
+      ncSignMessage: vi.fn().mockResolvedValue(TEST_RESULT),
+      signAndSendTransaction: vi.fn().mockResolvedValue(TEST_TX_RESULT),
+      signAndSendTransactions: vi.fn().mockResolvedValue(TEST_TX_RESULTS),
+      ncSignDelegateActions: vi.fn().mockResolvedValue(TEST_DELEGATE_RESULT),
+    };
     mockOpener();
     vi.stubGlobal('close', vi.fn());
-    vi.mocked(signMessage).mockResolvedValue(TEST_RESULT);
   });
 
   afterEach(() => {
@@ -75,12 +149,7 @@ describe('buildSignFn()', () => {
 
     await sign();
 
-    expect(signMessage).toHaveBeenCalledWith(
-      TEST_PAYLOAD,
-      TEST_WALLET.address,
-      expect.any(Object),
-      TEST_WALLET.id,
-    );
+    expect(mockAccountInstance.ncSignMessage).toHaveBeenCalledWith(TEST_PAYLOAD);
     expect(opener.postMessage).toHaveBeenCalledWith(
       { type: 'RESULT', result: TEST_RESULT },
       TEST_TARGET,
@@ -94,7 +163,7 @@ describe('buildSignFn()', () => {
     await sign();
     await sign();
 
-    expect(signMessage).toHaveBeenCalledTimes(2);
+    expect(mockAccountInstance.ncSignMessage).toHaveBeenCalledTimes(2);
   });
 
   it('throws WindowOpenerClosedError when window.opener is gone at sign time', async () => {
@@ -105,29 +174,61 @@ describe('buildSignFn()', () => {
   });
 
   it('throws UnsupportedSigningPayloadError for unsupported payloads', async () => {
-    const unsupportedPayload = {
-      signerId: 'alice.near',
-      receiverId: 'bob.near',
-      actions: [],
-    };
+    const unsupportedPayload = { foo: 'bar' };
     const sign = buildSignFn(TEST_TARGET, mockPrivy(), unsupportedPayload as never, TEST_WALLET);
 
     await expect(sign()).rejects.toBeInstanceOf(UnsupportedSigningPayloadError);
   });
 
-  it('fetches the user wallet only when one is not provided', async () => {
+  it('routes a transaction payload to account.signAndSendTransaction and posts RESULT', async () => {
+    const opener = mockOpener();
+    const sign = buildSignFn(TEST_TARGET, mockPrivy(), TEST_TX_PAYLOAD, TEST_WALLET);
+
+    await sign();
+
+    expect(mockAccountInstance.signAndSendTransaction).toHaveBeenCalled();
+    expect(opener.postMessage).toHaveBeenCalledWith(
+      { type: 'RESULT', result: TEST_TX_RESULT },
+      TEST_TARGET,
+    );
+    expect(window.close).toHaveBeenCalled();
+  });
+
+  it('routes batch transaction payloads to sequential account signing', async () => {
+    const opener = mockOpener();
+    const sign = buildSignFn(TEST_TARGET, mockPrivy(), TEST_BATCH_PAYLOAD, TEST_WALLET);
+
+    await sign();
+
+    expect(mockAccountInstance.signAndSendTransactions).toHaveBeenCalledTimes(1);
+    expect(opener.postMessage).toHaveBeenCalledWith(
+      { type: 'RESULT', result: TEST_TX_RESULTS },
+      TEST_TARGET,
+    );
+  });
+
+  it('routes signDelegateActions payload to account.ncSignDelegateActions and posts RESULT', async () => {
+    const opener = mockOpener();
+    const sign = buildSignFn(TEST_TARGET, mockPrivy(), TEST_DELEGATE_PAYLOAD, TEST_WALLET);
+
+    await sign();
+
+    expect(mockAccountInstance.ncSignDelegateActions).toHaveBeenCalledWith(TEST_DELEGATE_PAYLOAD);
+    expect(opener.postMessage).toHaveBeenCalledWith(
+      { type: 'RESULT', result: TEST_DELEGATE_RESULT },
+      TEST_TARGET,
+    );
+    expect(window.close).toHaveBeenCalled();
+  });
+
+  it('fetches the user wallet only when wallet is not provided', async () => {
     const privy = mockPrivy();
     const sign = buildSignFn(TEST_TARGET, privy, TEST_PAYLOAD);
 
     await sign();
 
     expect(privy.user.get).toHaveBeenCalledTimes(1);
-    expect(signMessage).toHaveBeenCalledWith(
-      TEST_PAYLOAD,
-      TEST_WALLET.address,
-      privy,
-      TEST_WALLET.id,
-    );
+    expect(mockAccountInstance.ncSignMessage).toHaveBeenCalledWith(TEST_PAYLOAD);
   });
 
   it('throws NoNearWalletError when no linked NEAR wallet exists', async () => {
@@ -144,7 +245,7 @@ describe('buildSignFn()', () => {
 
   it('propagates signMessage failures without posting RESULT or closing the window', async () => {
     const opener = mockOpener();
-    vi.mocked(signMessage).mockRejectedValue(new Error('signMessage failed'));
+    mockAccountInstance.ncSignMessage.mockRejectedValue(new Error('signMessage failed'));
     const sign = buildSignFn(TEST_TARGET, mockPrivy(), TEST_PAYLOAD, TEST_WALLET);
 
     await expect(sign()).rejects.toThrow('signMessage failed');

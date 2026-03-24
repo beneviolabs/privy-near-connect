@@ -2,8 +2,9 @@ import type Privy from '@privy-io/js-sdk-core';
 
 import { NoOpenerError, TimeoutError } from '@/sign-page.errors';
 import { buildSignFn } from '@/signing/signer';
-import type { PrivyNearWallet } from '@/signing/signer';
+import type { PrivyNearWallet, RpcOptions } from '@/signing/signer';
 import type { ChannelMsg, SigningPayload } from '@/types';
+import { LOG_PREFIX } from '@/log';
 
 const DEFAULT_SIGN_REQUEST_TIMEOUT_MS = 30_000;
 const READY_MESSAGE = { type: 'READY' } as const satisfies ChannelMsg;
@@ -16,8 +17,10 @@ export type SignPageOptions = {
   timeout?: number;
   /** Exact trusted origin to use for postMessage target and message filtering. Defaults to `window.opener.location.origin` when same-origin access is available. */
   allowedOrigin?: string;
-  /** Wallet to use during signing. If omitted, it is fetched from `privy.user.get()` during signing. */
+  /** Privy NEAR wallet to use during signing. If omitted, the wallet is fetched from `privy.user.get()` during signing. */
   wallet?: PrivyNearWallet;
+  /** RPC connection options forwarded to {@link signAndSendTransaction} for transaction payloads. Defaults to the public RPC for the payload's network. */
+  rpcOptions?: RpcOptions;
 };
 
 /** Session returned by `initSigningPage` after receiving a signing payload. */
@@ -34,10 +37,12 @@ function mountPrivyIframe(privy: Privy): Promise<() => void> {
   return new Promise((resolve) => {
     const mountedIframe = document.querySelector('iframe[data-privy-embed]');
     if (mountedIframe && cleanupMountedIframe) {
+      console.debug(LOG_PREFIX, '↺ Reusing existing Privy iframe');
       resolve(cleanupMountedIframe);
       return;
     }
 
+    console.debug(LOG_PREFIX, '↻ Mounting Privy iframe');
     cleanupMountedIframe = undefined;
 
     const iframe = document.createElement('iframe');
@@ -55,6 +60,7 @@ function mountPrivyIframe(privy: Privy): Promise<() => void> {
     const cleanup = () => {
       if (cleanedUp) return;
       cleanedUp = true;
+      console.debug(LOG_PREFIX, '↻ Cleaning up existing Privy iframe');
       window.removeEventListener('message', onMessage);
       iframe.remove();
       if (cleanupMountedIframe === cleanup) cleanupMountedIframe = undefined;
@@ -70,6 +76,7 @@ function mountPrivyIframe(privy: Privy): Promise<() => void> {
             iframe.src = privy.embeddedWallet.getURL();
           },
         });
+        console.debug(LOG_PREFIX, '✓ Privy iframe loaded and message poster set');
         cleanupMountedIframe = cleanup;
         resolve(cleanup);
       },
@@ -84,6 +91,8 @@ function mountPrivyIframe(privy: Privy): Promise<() => void> {
 
 function waitForOpenerSignRequest(allowedOrigin: string, timeout: number): Promise<SigningPayload> {
   return new Promise((resolve, reject) => {
+    console.debug(LOG_PREFIX, '… Waiting for SIGN_REQUEST', { allowedOrigin, timeout });
+
     const cleanup = () => {
       clearTimeout(timeoutId);
       window.removeEventListener('message', onMessage);
@@ -94,6 +103,7 @@ function waitForOpenerSignRequest(allowedOrigin: string, timeout: number): Promi
       const msg = event.data as ChannelMsg;
       if (!msg || msg.type !== 'SIGN_REQUEST') return;
       cleanup();
+      console.debug(LOG_PREFIX, '← SIGN_REQUEST received', msg.payload);
       resolve(msg.payload);
     };
 
@@ -101,6 +111,7 @@ function waitForOpenerSignRequest(allowedOrigin: string, timeout: number): Promi
 
     const timeoutId = setTimeout(() => {
       cleanup();
+      console.debug(LOG_PREFIX, '✗ SIGN_REQUEST timed out', { timeout });
       reject(new TimeoutError(timeout));
     }, timeout);
   });
@@ -120,8 +131,8 @@ export const initSigningPage = async (
   privy: Privy,
   options?: SignPageOptions,
 ): Promise<SignPageSession> => {
+  console.debug(LOG_PREFIX, '→ initSigningPage start');
   if (!window.opener) throw new NoOpenerError();
-  if (options?.allowedOrigin === '*') throw new Error(INVALID_ORIGIN_ERROR_MESSAGE);
 
   let target = options?.allowedOrigin;
   if (!target) {
@@ -136,6 +147,8 @@ export const initSigningPage = async (
   await mountPrivyIframe(privy);
 
   (window.opener as Window).postMessage(READY_MESSAGE, target);
+  console.debug(LOG_PREFIX, '→ READY posted to', target);
+
   const payload = await waitForOpenerSignRequest(
     target,
     options?.timeout ?? DEFAULT_SIGN_REQUEST_TIMEOUT_MS,
@@ -143,6 +156,6 @@ export const initSigningPage = async (
 
   return {
     payload,
-    sign: buildSignFn(target, privy, payload, options?.wallet),
+    sign: buildSignFn(target, privy, payload, options?.wallet, options?.rpcOptions),
   };
 };

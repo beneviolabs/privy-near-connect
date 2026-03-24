@@ -10,10 +10,124 @@ type ChannelMsg =
 type Status = 'idle' | 'opening' | 'waiting' | 'done' | 'error';
 
 const TEST_PAYLOAD = {
+  kind: 'signMessage',
   message: 'Hello, NEAR!',
   recipient: 'example.near',
   nonce: crypto.getRandomValues(new Uint8Array(32)),
 };
+
+const GUEST_BOOK_RECEIVER_ID = 'guest-book.near';
+const GUEST_BOOK_GAS = '30000000000000';
+
+const guestBookCall1 = {
+  type: 'FunctionCall',
+  params: {
+    methodName: 'add_message',
+    args: { text: 'Hello from action 1' },
+    gas: GUEST_BOOK_GAS,
+    deposit: '0',
+  },
+};
+
+const guestBookCall2 = {
+  type: 'FunctionCall',
+  params: {
+    methodName: 'add_message',
+    args: { text: 'Hello from action 2' },
+    gas: GUEST_BOOK_GAS,
+    deposit: '0',
+  },
+};
+
+const TEST_TX_PAYLOAD = {
+  kind: 'signAndSendTransaction',
+  receiverId: GUEST_BOOK_RECEIVER_ID,
+  actions: [guestBookCall1, guestBookCall2],
+};
+
+const TEST_TXS_PAYLOAD = {
+  kind: 'signAndSendTransactions',
+  network: 'mainnet',
+  transactions: [
+    {
+      receiverId: GUEST_BOOK_RECEIVER_ID,
+      actions: [guestBookCall1],
+    },
+    {
+      receiverId: GUEST_BOOK_RECEIVER_ID,
+      actions: [guestBookCall2],
+    },
+  ],
+};
+
+const TEST_SIGN_IN_PAYLOAD = {
+  kind: 'signIn',
+  network: 'mainnet',
+  addFunctionCallKey: {
+    contractId: GUEST_BOOK_RECEIVER_ID,
+    publicKey: 'ed25519:11111111111111111111111111111111',
+    allowMethods: { anyMethod: true },
+    gasAllowance: { kind: 'limited', amount: '250000000000000000000000' },
+  },
+};
+
+const TEST_SIGN_OUT_PAYLOAD = {
+  kind: 'signOut',
+  network: 'mainnet',
+};
+
+const TEST_DELEGATE_PAYLOAD = {
+  kind: 'signDelegateActions',
+  network: 'mainnet',
+  delegateActions: [
+    {
+      receiverId: GUEST_BOOK_RECEIVER_ID,
+      actions: [guestBookCall1],
+    },
+    {
+      receiverId: GUEST_BOOK_RECEIVER_ID,
+      actions: [guestBookCall2],
+    },
+  ],
+};
+
+function openSigningPopup(
+  payload: unknown,
+  setStatus: (status: Status) => void,
+  setResult: (result: unknown) => void,
+  setErrorMsg: (message: string | null) => void,
+) {
+  const popup = window.open(`${window.location.origin}/#sign`, '_blank');
+  if (!popup) {
+    setErrorMsg('Popup was blocked');
+    setStatus('error');
+    return;
+  }
+  const popupWindow = popup;
+
+  setStatus('opening');
+
+  function onMessage(event: MessageEvent) {
+    if (event.source !== popupWindow) return;
+
+    const msg = event.data as ChannelMsg;
+
+    if (msg.type === 'READY') {
+      popupWindow.postMessage({ type: 'SIGN_REQUEST', payload }, window.location.origin);
+      setStatus('waiting');
+    } else if (msg.type === 'RESULT') {
+      setResult(msg.result);
+      setStatus('done');
+      window.removeEventListener('message', onMessage);
+    } else if (msg.type === 'ERROR') {
+      setErrorMsg(msg.message);
+      setStatus('error');
+      window.removeEventListener('message', onMessage);
+    }
+  }
+
+  window.addEventListener('message', onMessage);
+}
 
 export default function App() {
   const [status, setStatus] = useState<Status>('idle');
@@ -21,36 +135,27 @@ export default function App() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   function handleSignMessage() {
-    const popup = window.open(`${window.location.origin}/#sign`, '_blank');
-    if (!popup) {
-      setErrorMsg('Popup was blocked');
-      setStatus('error');
-      return;
-    }
+    openSigningPopup(TEST_PAYLOAD, setStatus, setResult, setErrorMsg);
+  }
 
-    setStatus('opening');
+  function handleSignAndSendTransaction() {
+    openSigningPopup(TEST_TX_PAYLOAD, setStatus, setResult, setErrorMsg);
+  }
 
-    function onMessage(event: MessageEvent) {
-      // Manually simulate executor for now
-      if (event.source !== popup) return;
+  function handleSignIn() {
+    openSigningPopup(TEST_SIGN_IN_PAYLOAD, setStatus, setResult, setErrorMsg);
+  }
 
-      const msg = event.data as ChannelMsg;
+  function handleSignOut() {
+    openSigningPopup(TEST_SIGN_OUT_PAYLOAD, setStatus, setResult, setErrorMsg);
+  }
 
-      if (msg.type === 'READY') {
-        popup.postMessage({ type: 'SIGN_REQUEST', payload: TEST_PAYLOAD }, window.location.origin);
-        setStatus('waiting');
-      } else if (msg.type === 'RESULT') {
-        setResult(msg.result);
-        setStatus('done');
-        window.removeEventListener('message', onMessage);
-      } else if (msg.type === 'ERROR') {
-        setErrorMsg(msg.message);
-        setStatus('error');
-        window.removeEventListener('message', onMessage);
-      }
-    }
+  function handleSignAndSendTransactions() {
+    openSigningPopup(TEST_TXS_PAYLOAD, setStatus, setResult, setErrorMsg);
+  }
 
-    window.addEventListener('message', onMessage);
+  function handleSignDelegateActions() {
+    openSigningPopup(TEST_DELEGATE_PAYLOAD, setStatus, setResult, setErrorMsg);
   }
 
   return (
@@ -59,6 +164,35 @@ export default function App() {
 
       <button onClick={handleSignMessage} disabled={status === 'opening' || status === 'waiting'}>
         Sign Message
+      </button>
+
+      <button onClick={handleSignIn} disabled={status === 'opening' || status === 'waiting'}>
+        Sign In
+      </button>
+
+      <button onClick={handleSignOut} disabled={status === 'opening' || status === 'waiting'}>
+        Sign Out
+      </button>
+
+      <button
+        onClick={handleSignAndSendTransaction}
+        disabled={status === 'opening' || status === 'waiting'}
+      >
+        Sign & Send Transaction
+      </button>
+
+      <button
+        onClick={handleSignAndSendTransactions}
+        disabled={status === 'opening' || status === 'waiting'}
+      >
+        Sign & Send Transactions
+      </button>
+
+      <button
+        onClick={handleSignDelegateActions}
+        disabled={status === 'opening' || status === 'waiting'}
+      >
+        Sign Delegate Actions
       </button>
 
       <p>Status: {status}</p>

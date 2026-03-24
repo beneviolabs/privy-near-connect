@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type Privy from '@privy-io/js-sdk-core';
-import type { SignMessageParams } from '@hot-labs/near-connect';
+import type { SigningPayload } from '@/types';
 
 import { NoOpenerError, TimeoutError } from '@/sign-page.errors';
 import { initSigningPage } from '@/sign-page';
@@ -10,7 +10,8 @@ import { initSigningPage } from '@/sign-page';
 
 const OPENER_ORIGIN = 'https://app.example.com';
 
-const TEST_PAYLOAD: SignMessageParams = {
+const TEST_PAYLOAD: SigningPayload = {
+  kind: 'signMessage',
   message: 'hello',
   recipient: 'bob.near',
   nonce: new Uint8Array(32),

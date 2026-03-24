@@ -22,5 +22,9 @@ export default defineConfig({
       ...options.alias,
       '@': resolve(__dirname, 'src'),
     };
+    // Prevent debug logging in production distributed code.
+    if (process.env.NODE_ENV === 'production') {
+      options.pure = ['console.debug'];
+    }
   },
 });
