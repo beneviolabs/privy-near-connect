@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import Privy, { LocalStorage } from '@privy-io/js-sdk-core';
+import Privy, { LocalStorage, create as createWallet } from '@privy-io/js-sdk-core';
 import { SideNav } from './components/sidebar/SideNav';
 import { LoginSection } from './components/login/LoginSection';
 import { SigningExamples } from './components/signing/SigningExamples';
@@ -27,17 +27,23 @@ function hasNearWallet(user: unknown): boolean {
   );
 }
 
-async function ensureNearWalletSession(privy: Privy, user: unknown): Promise<unknown | null> {
+async function ensureNearWallet(privy: Privy, user: unknown): Promise<unknown | null> {
   if (!user) return null;
   if (hasNearWallet(user)) return user;
+  console.log('Ensuring user has linked NEAR wallet', { user });
 
-  const created = await privy.embeddedWallet.create({}).catch(() => null);
-  const createdUser = created?.user ?? null;
-  if (createdUser && hasNearWallet(createdUser)) return createdUser;
+  await createWallet(
+    {
+      fetchPrivyRoute: privy.fetchPrivyRoute.bind(privy),
+      getCompiledPath: privy.getCompiledPath.bind(privy),
+      app: { appId: privy.app.appId },
+    },
+    { request: { chain_type: 'near' } },
+  );
 
-  await privy.auth.logout().catch(() => {
-    // best-effort
-  });
+  const { user: refreshedUser } = await privy.user.get().catch(() => ({ user: null }));
+  if (refreshedUser && hasNearWallet(refreshedUser)) return refreshedUser;
+
   return null;
 }
 
@@ -74,7 +80,7 @@ export default function App() {
       .get()
       .then(async ({ user: currentUser }) => {
         if (!isEffectCurrent) return;
-        const ensuredUser = await ensureNearWalletSession(privy, currentUser ?? null);
+        const ensuredUser = await ensureNearWallet(privy, currentUser ?? null);
         if (!isEffectCurrent) return;
         setUser(ensuredUser);
       })
@@ -123,7 +129,7 @@ export default function App() {
     setLoginError(null);
     try {
       const result = await privy.auth.email.loginWithCode(email.trim(), code.trim());
-      const ensuredUser = await ensureNearWalletSession(privy, result.user);
+      const ensuredUser = await ensureNearWallet(privy, result.user);
       setUser(ensuredUser);
     } catch (err) {
       setLoginError((err as Error).message);
