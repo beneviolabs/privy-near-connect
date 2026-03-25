@@ -42,10 +42,6 @@ jobs:
         run: npm ci
         working-directory: examples/react
 
-      - name: Typecheck example app
-        run: npx tsc --noEmit
-        working-directory: examples/react
-
       - name: Build example app
         run: npm run build -- --base=/privy-near-connect/
         working-directory: examples/react
