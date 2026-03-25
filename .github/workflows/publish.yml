@@ -2,7 +2,7 @@ name: Publish React Example App to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, react-demo-app]
 
 permissions:
   contents: read
