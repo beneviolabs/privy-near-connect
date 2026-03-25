@@ -16,6 +16,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -39,6 +40,10 @@ jobs:
 
       - name: Install example dependencies
         run: npm ci
+        working-directory: examples/react
+
+      - name: Typecheck example app
+        run: npx tsc --noEmit
         working-directory: examples/react
 
       - name: Build example app
