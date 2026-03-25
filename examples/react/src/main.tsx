@@ -6,8 +6,9 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 import SignPage from './SignPage';
+import { ROUTES } from './utils/routes';
 
-const isSignPage = window.location.hash === '#sign';
+const isSignPage = window.location.hash === ROUTES.sign;
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

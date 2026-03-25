@@ -1,3 +1,5 @@
+import { appUrl, ROUTES } from '../routes';
+
 // Inline the protocol shape since ChannelMsg is internal to the library
 export type ChannelMsg =
   | { type: 'READY' }
@@ -14,7 +16,7 @@ export function openSigningPopup(
   setResult: (r: unknown) => void,
   setError: (e: string | null) => void,
 ) {
-  const popup = window.open(`${window.location.origin}/#sign`, '_blank');
+  const popup = window.open(appUrl(ROUTES.sign), '_blank');
   if (!popup) {
     setError('Popup was blocked');
     setStatus('error');
