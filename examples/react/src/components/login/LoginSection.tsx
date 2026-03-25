@@ -28,6 +28,10 @@ export function LoginSection({
   return (
     <div>
       <h2 style={{ marginTop: 0 }}>Login</h2>
+      <p style={{ marginTop: 0, color: '#555', maxWidth: 420 }}>
+        Logging in will create a Privy account with a linked NEAR wallet if one does not already
+        exist.
+      </p>
       {loginStep === 'email' ? (
         <form
           onSubmit={onSendCode}
