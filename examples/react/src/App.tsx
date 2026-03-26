@@ -4,6 +4,7 @@ import { SideNav } from './components/sidebar/SideNav';
 import { LoginSection } from './components/login/LoginSection';
 import { SigningExamples } from './components/signing/SigningExamples';
 import {
+  payloadWithNetwork,
   TEST_DELEGATE_PAYLOAD,
   TEST_MESSAGE_PAYLOAD,
   TEST_TX_PAYLOAD,
@@ -67,6 +68,7 @@ export default function App() {
   const [actionStatus, setActionStatus] = useState<ActionStatus>('idle');
   const [actionResult, setActionResult] = useState<unknown>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [network, setNetwork] = useState<'testnet' | 'mainnet'>('testnet');
 
   useEffect(() => {
     if (!privy) {
@@ -183,25 +185,91 @@ export default function App() {
     );
   } else {
     mainContent = (
-      <SigningExamples
-        busy={busy}
-        actionStatus={actionStatus}
-        actionError={actionError}
-        actionResult={actionResult}
-        onLogout={handleLogout}
-        onSignMessage={() =>
-          openSigningPopup(TEST_MESSAGE_PAYLOAD, setActionStatus, setActionResult, setActionError)
-        }
-        onSignTransaction={() =>
-          openSigningPopup(TEST_TX_PAYLOAD, setActionStatus, setActionResult, setActionError)
-        }
-        onSignTransactions={() =>
-          openSigningPopup(TEST_TXS_PAYLOAD, setActionStatus, setActionResult, setActionError)
-        }
-        onSignDelegateActions={() =>
-          openSigningPopup(TEST_DELEGATE_PAYLOAD, setActionStatus, setActionResult, setActionError)
-        }
-      />
+      <>
+        <div style={{ marginBottom: 12 }}>
+          <button onClick={handleLogout}>Logout</button>
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ fontSize: 13, marginRight: 12 }}>Network:</label>
+          <label style={{ fontSize: 13, marginRight: 12 }}>
+            <input
+              type="radio"
+              name="network"
+              value="testnet"
+              checked={network === 'testnet'}
+              onChange={() => setNetwork('testnet')}
+              style={{ marginRight: 6 }}
+            />
+            Testnet
+          </label>
+          <label style={{ fontSize: 13 }}>
+            <input
+              type="radio"
+              name="network"
+              value="mainnet"
+              checked={network === 'mainnet'}
+              onChange={() => setNetwork('mainnet')}
+              style={{ marginRight: 6 }}
+            />
+            Mainnet
+          </label>
+        </div>
+
+        <SigningExamples
+          busy={busy}
+          actionStatus={actionStatus}
+          actionError={actionError}
+          actionResult={actionResult}
+          onSignMessage={() =>
+            openSigningPopup(
+              payloadWithNetwork(TEST_MESSAGE_PAYLOAD, network),
+              setActionStatus,
+              setActionResult,
+              setActionError,
+            )
+          }
+          onSignTransaction={() =>
+            openSigningPopup(
+              payloadWithNetwork(TEST_TX_PAYLOAD, network),
+              setActionStatus,
+              setActionResult,
+              setActionError,
+            )
+          }
+          onSignTransactions={() =>
+            openSigningPopup(
+              payloadWithNetwork(TEST_TXS_PAYLOAD, network),
+              setActionStatus,
+              setActionResult,
+              setActionError,
+            )
+          }
+          onSignDelegateActions={() =>
+            openSigningPopup(
+              payloadWithNetwork(TEST_DELEGATE_PAYLOAD, network),
+              setActionStatus,
+              setActionResult,
+              setActionError,
+            )
+          }
+        />
+        <div
+          style={{
+            marginBottom: 16,
+            padding: '10px 12px',
+            background: '#fffaf0',
+            border: '1px solid #f6ad55',
+            borderRadius: 6,
+            color: '#7a5a00',
+            fontSize: 12,
+            maxWidth: 620,
+          }}
+        >
+          Sign Transaction / Sign Transactions can fail with errors like{' '}
+          <strong>"Access key does not exist at block height"</strong> if the wallet is not
+          funded/initialized on the selected network.
+        </div>
+      </>
     );
   }
 

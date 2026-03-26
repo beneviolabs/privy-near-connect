@@ -5,7 +5,6 @@ type SigningExamplesProps = {
   actionStatus: ActionStatus;
   actionError: string | null;
   actionResult: unknown;
-  onLogout: () => void;
   onSignMessage: () => void;
   onSignTransaction: () => void;
   onSignTransactions: () => void;
@@ -17,7 +16,6 @@ export function SigningExamples({
   actionStatus,
   actionError,
   actionResult,
-  onLogout,
   onSignMessage,
   onSignTransaction,
   onSignTransactions,
@@ -25,9 +23,6 @@ export function SigningExamples({
 }: SigningExamplesProps) {
   return (
     <div>
-      <div style={{ marginBottom: 16 }}>
-        <button onClick={onLogout}>Logout</button>
-      </div>
       <h2 style={{ marginTop: 0 }}>Wallet Actions</h2>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 280 }}>
         <button disabled={busy} onClick={onSignMessage}>
