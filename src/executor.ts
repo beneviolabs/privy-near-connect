@@ -18,6 +18,7 @@ import type { ChannelMsg, SigningPayload } from '@/types';
 import { LOG_PREFIX } from '@/log';
 
 const SIGN_PAGE_URL = 'http://localhost:5173/#sign';
+const SIGN_PAGE_ORIGIN = new URL(SIGN_PAGE_URL).origin;
 
 class SignPage {
   private static instance: SignPage | null = null;
@@ -40,10 +41,16 @@ class SignPage {
       };
 
       const handler = (event: MessageEvent) => {
+        if (event.source !== popup) return;
+        if (event.origin !== SIGN_PAGE_ORIGIN) return;
+
         const msg = event.data as ChannelMsg;
 
         if (msg.type === 'READY') {
-          popup.postMessage({ type: 'SIGN_REQUEST', payload } satisfies ChannelMsg, '*');
+          popup.postMessage(
+            { type: 'SIGN_REQUEST', payload } satisfies ChannelMsg,
+            SIGN_PAGE_ORIGIN,
+          );
         } else if (msg.type === 'RESULT') {
           cleanup();
           resolve(msg.result as T);
