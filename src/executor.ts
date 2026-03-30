@@ -14,45 +14,97 @@ import type {
 } from '@hot-labs/near-connect/build/types/index.js';
 import type { FinalExecutionOutcome } from '@near-js/types';
 
+import type { ChannelMsg, SigningPayload } from '@/types';
 import { LOG_PREFIX } from '@/log';
 
-// URL of the sign page opened as a popup for each signing operation.
-// near-connect replaces `window.open` with its proxied `window.selector.open`
-// inside the sandbox iframe, so popup messaging is relayed through the main window.
-const SIGN_PAGE_URL = ''; // TODO: set to the deployed sign page URL
+const SIGN_PAGE_URL = 'http://localhost:5173/#sign';
 
-let accounts: Account[] = [];
+class SignPage {
+  private static instance: SignPage | null = null;
+
+  static getInstance(): SignPage {
+    if (!SignPage.instance) SignPage.instance = new SignPage();
+    return SignPage.instance;
+  }
+
+  private constructor() {}
+
+  private request<T>(payload: SigningPayload): Promise<T> {
+    return new Promise((resolve, reject) => {
+      const popup = window.open(SIGN_PAGE_URL, '_blank', 'popup,width=420,height=640');
+      if (!popup) return reject(new Error('Popup blocked'));
+
+      const cleanup = () => {
+        window.removeEventListener('message', handler);
+        clearInterval(closedPoll);
+      };
+
+      const handler = (event: MessageEvent) => {
+        const msg = event.data as ChannelMsg;
+
+        if (msg.type === 'READY') {
+          popup.postMessage({ type: 'SIGN_REQUEST', payload } satisfies ChannelMsg, '*');
+        } else if (msg.type === 'RESULT') {
+          cleanup();
+          resolve(msg.result as T);
+        } else if (msg.type === 'ERROR') {
+          cleanup();
+          reject(new Error(msg.message));
+        }
+      };
+
+      const closedPoll = setInterval(() => {
+        if (popup.closed) {
+          cleanup();
+          reject(new Error('Sign page closed'));
+        }
+      }, 300);
+
+      window.addEventListener('message', handler);
+    });
+  }
+
+  signMessage(params: SignMessageParams): Promise<SignedMessage> {
+    return this.request({ kind: 'signMessage', ...params });
+  }
+}
 
 const wallet: NearWalletBase = {
-  // Manifest is owned by near-connect (loaded from manifest.json); this stub
-  // satisfies the NearWalletBase interface inside the sandbox.
   manifest: {} as WalletManifest,
 
   async signIn(data?: SignInParams): Promise<Account[]> {
-    console.log(LOG_PREFIX, 'signIn', data, 'JOJOBA', this.manifest);
-    return accounts;
+    return [
+      {
+        accountId: 'example.near',
+        publicKey: '',
+      },
+    ];
   },
 
   async signInAndSignMessage(
-    data: SignInAndSignMessageParams,
+    _data: SignInAndSignMessageParams,
   ): Promise<AccountWithSignedMessage[]> {
-    console.log(LOG_PREFIX, 'signInAndSignMessage', data);
+    console.log(LOG_PREFIX, 'signInAndSignMessage', _data);
     return [];
   },
 
   async signOut(_data?: { network?: string }): Promise<void> {
     console.log(LOG_PREFIX, 'signOut');
-    accounts = [];
   },
 
   async getAccounts(): Promise<Account[]> {
     console.log(LOG_PREFIX, 'getAccounts');
-    return accounts;
+    return [
+      {
+        accountId: 'example.near',
+        publicKey: '',
+      },
+    ];
   },
 
-  async signMessage(_params: SignMessageParams): Promise<SignedMessage> {
-    console.log(LOG_PREFIX, 'signMessage', _params);
-    return {} as SignedMessage;
+  async signMessage(params: SignMessageParams): Promise<SignedMessage> {
+    console.log(LOG_PREFIX, 'signMessage', params);
+    return SignPage.getInstance().signMessage(params);
   },
 
   async signAndSendTransaction(
@@ -77,6 +129,4 @@ const wallet: NearWalletBase = {
   },
 };
 
-// Register with the near-connect sandbox.
-// near-connect injects `window.selector` into this iframe before loading this script.
-(window as any).selector.ready(wallet);
+window.selector.ready(wallet);
