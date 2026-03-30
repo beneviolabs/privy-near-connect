@@ -68,13 +68,6 @@ describe('initSigningPage()', () => {
     });
   });
 
-  describe('origin guard', () => {
-    it('rejects explicit wildcard allowedOrigin', async () => {
-      mockOpener();
-      await expect(initSigningPage(mockPrivy(), { allowedOrigin: '*' })).rejects.toThrow();
-    });
-  });
-
   describe('READY handshake', () => {
     it('posts READY to opener using opener.location.origin as target', async () => {
       vi.useFakeTimers();
@@ -88,7 +81,7 @@ describe('initSigningPage()', () => {
       await expect(promise).rejects.toBeInstanceOf(TimeoutError);
     });
 
-    it('rejects when allowedOrigin is omitted and opener origin is not readable', async () => {
+    it('rejects when opener origin is not readable (cross-origin)', async () => {
       vi.stubGlobal('opener', {
         postMessage: vi.fn(),
         get location() {
@@ -98,19 +91,29 @@ describe('initSigningPage()', () => {
         },
       });
 
-      await expect(initSigningPage(mockPrivy())).rejects.toThrow(
-        'A specific target origin is required; wildcard origins are not allowed',
-      );
+      await expect(initSigningPage(mockPrivy())).rejects.toThrow(DOMException);
     });
 
-    it('uses allowedOrigin as postMessage target when provided', async () => {
+    it('merges additional allowedOrigins with opener origin', async () => {
       vi.useFakeTimers();
       const opener = mockOpener();
-      const allowed = 'https://custom.example.com';
-      const promise = initSigningPage(mockPrivy(), { allowedOrigin: allowed });
+      const extra = 'https://other.com';
+      const promise = initSigningPage(mockPrivy(), { allowedOrigins: [extra] });
 
       await flushPrivyIframeLoad();
-      expect(opener.postMessage).toHaveBeenCalledWith({ type: 'READY' }, allowed);
+      expect(opener.postMessage).toHaveBeenCalledWith({ type: 'READY' }, OPENER_ORIGIN);
+
+      vi.runAllTimers();
+      await expect(promise).rejects.toBeInstanceOf(TimeoutError);
+    });
+
+    it('accepts empty allowedOrigins and still targets opener origin', async () => {
+      vi.useFakeTimers();
+      const opener = mockOpener();
+      const promise = initSigningPage(mockPrivy(), { allowedOrigins: [] });
+
+      await flushPrivyIframeLoad();
+      expect(opener.postMessage).toHaveBeenCalledWith({ type: 'READY' }, OPENER_ORIGIN);
 
       vi.runAllTimers();
       await expect(promise).rejects.toBeInstanceOf(TimeoutError);

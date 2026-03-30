@@ -64,8 +64,8 @@ export type ChannelMsg =
 export type SignPageOptions = {
   /** Milliseconds to wait for `SIGN_REQUEST` before rejecting. */
   timeout?: number;
-  /** Exact trusted origin to use for postMessage target and message filtering. Defaults to `window.opener.location.origin` when same-origin access is available. */
-  allowedOrigin?: string;
+  /** Additional trusted origins for `SIGN_REQUEST` message filtering. `window.opener.location.origin` is always included. */
+  allowedOrigins?: string[];
   /** Privy NEAR wallet to use during signing. If omitted, the wallet is fetched from `privy.user.get()` during signing. */
   wallet?: PrivyNearWallet;
   /** RPC connection options for signing payloads. Defaults to the public RPC for the payload's `network` value, or `mainnet` when `network` is omitted. */
