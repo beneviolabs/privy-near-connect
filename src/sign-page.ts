@@ -9,8 +9,10 @@ export type { SignPageOptions, SignPageSession } from '@/types';
 
 const DEFAULT_SIGN_REQUEST_TIMEOUT_MS = 30_000;
 const READY_MESSAGE = { type: 'READY' } as const satisfies ChannelMsg;
-const INVALID_ORIGIN_ERROR_MESSAGE =
-  'A specific target origin is required; wildcard origins are not allowed';
+const INVALID_ORIGIN_ERROR_MESSAGE = 'A wildcard origin (*) is not allowed as a postMessage target';
+const UNRESOLVABLE_ORIGIN_ERROR_MESSAGE =
+  'Could not resolve a target origin: window.opener.location.origin is not readable (cross-origin opener). ' +
+  'Pass an explicit allowedOrigin to initSigningPage.';
 
 let cleanupMountedIframe: (() => void) | undefined;
 
@@ -106,6 +108,8 @@ function waitForOpenerSignRequest(allowedOrigin: string, timeout: number): Promi
  * @param options - Optional timeout and trusted origin overrides. Provide `allowedOrigin` when the opener is cross-origin.
  * @returns A session containing the received payload and a `sign` callback.
  * @throws {@link NoOpenerError} If `window.opener` is not available.
+ * @throws {Error} If `allowedOrigin` is omitted and `window.opener.location.origin` is not readable (cross-origin opener).
+ * @throws {Error} If `allowedOrigin` is `'*'`.
  * @throws {@link TimeoutError} If no `SIGN_REQUEST` arrives before timeout.
  */
 export const initSigningPage = async (
@@ -115,15 +119,22 @@ export const initSigningPage = async (
   console.debug(LOG_PREFIX, '→ initSigningPage start');
   if (!window.opener) throw new NoOpenerError();
 
-  let target = options?.allowedOrigin;
-  if (!target) {
+  let target: string;
+
+  // If no allowed origin is explicitly provided, attempt to use `window.opener.location.origin` if same-origin access is available.
+  // This allows the signing page to work out-of-the-box in same-origin contexts while still
+  // supporting cross-origin openers via explicit configuration.
+  if (options?.allowedOrigin) {
+    target = options.allowedOrigin;
+  } else {
     try {
       target = window.opener.location.origin;
     } catch {
-      throw new Error(INVALID_ORIGIN_ERROR_MESSAGE);
+      throw new Error(UNRESOLVABLE_ORIGIN_ERROR_MESSAGE);
     }
   }
-  if (!target || target === '*') throw new Error(INVALID_ORIGIN_ERROR_MESSAGE);
+
+  if (target === '*') throw new Error(INVALID_ORIGIN_ERROR_MESSAGE);
 
   await mountPrivyIframe(privy);
 

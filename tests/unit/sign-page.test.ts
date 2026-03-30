@@ -99,7 +99,15 @@ describe('initSigningPage()', () => {
       });
 
       await expect(initSigningPage(mockPrivy())).rejects.toThrow(
-        'A specific target origin is required; wildcard origins are not allowed',
+        'Could not resolve a target origin: window.opener.location.origin is not readable (cross-origin opener). ' +
+          'Pass an explicit allowedOrigin to initSigningPage.',
+      );
+    });
+
+    it('rejects explicit wildcard allowedOrigin with a distinct message', async () => {
+      mockOpener();
+      await expect(initSigningPage(mockPrivy(), { allowedOrigin: '*' })).rejects.toThrow(
+        'A wildcard origin (*) is not allowed as a postMessage target',
       );
     });
 
