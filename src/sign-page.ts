@@ -9,6 +9,8 @@ export type { SignPageOptions, SignPageSession } from '@/types';
 
 const DEFAULT_SIGN_REQUEST_TIMEOUT_MS = 30_000;
 const READY_MESSAGE = { type: 'READY' } as const satisfies ChannelMsg;
+const INVALID_ORIGIN_ERROR_MESSAGE =
+  'A specific target origin is required; wildcard origins are not allowed';
 
 let cleanupMountedIframe: (() => void) | undefined;
 
@@ -68,12 +70,9 @@ function mountPrivyIframe(privy: Privy): Promise<() => void> {
   });
 }
 
-function waitForOpenerSignRequest(
-  allowedOrigins: string[],
-  timeout: number,
-): Promise<SigningPayload> {
+function waitForOpenerSignRequest(allowedOrigin: string, timeout: number): Promise<SigningPayload> {
   return new Promise((resolve, reject) => {
-    console.debug(LOG_PREFIX, '… Waiting for SIGN_REQUEST', { allowedOrigins, timeout });
+    console.debug(LOG_PREFIX, '… Waiting for SIGN_REQUEST', { allowedOrigin, timeout });
 
     const cleanup = () => {
       clearTimeout(timeoutId);
@@ -81,7 +80,7 @@ function waitForOpenerSignRequest(
     };
 
     const onMessage = (event: MessageEvent) => {
-      if (!allowedOrigins.includes(event.origin)) return;
+      if (event.origin !== allowedOrigin) return;
       const msg = event.data as ChannelMsg;
       if (!msg || msg.type !== 'SIGN_REQUEST') return;
       cleanup();
@@ -104,22 +103,27 @@ function waitForOpenerSignRequest(
  * handshake with the opener window.
  *
  * @param privy - An instantiated and initialized Privy client.
- * @param options - Optional timeout and additional trusted origins besides `window.opener.location.origin`.
+ * @param options - Optional timeout and trusted origin overrides. Provide `allowedOrigin` when the opener is cross-origin.
  * @returns A session containing the received payload and a `sign` callback.
- * @throws {@link NoOpenerError} If `window.opener` is `null`.
- * @throws {DOMException} If `window.opener.location.origin` is not readable (cross-origin opener).
+ * @throws {@link NoOpenerError} If `window.opener` is not available.
  * @throws {@link TimeoutError} If no `SIGN_REQUEST` arrives before timeout.
  */
 export const initSigningPage = async (
   privy: Privy,
   options?: SignPageOptions,
 ): Promise<SignPageSession> => {
-  console.debug(LOG_PREFIX, '→ initSigningPage start with options:', options);
+  console.debug(LOG_PREFIX, '→ initSigningPage start');
   if (!window.opener) throw new NoOpenerError();
 
-  const target = window.opener.location.origin;
-  const configuredAllowedOrigins = options?.allowedOrigins ?? [];
-  const allowedOrigins = Array.from(new Set([target, ...configuredAllowedOrigins]));
+  let target = options?.allowedOrigin;
+  if (!target) {
+    try {
+      target = window.opener.location.origin;
+    } catch {
+      throw new Error(INVALID_ORIGIN_ERROR_MESSAGE);
+    }
+  }
+  if (!target || target === '*') throw new Error(INVALID_ORIGIN_ERROR_MESSAGE);
 
   await mountPrivyIframe(privy);
 
@@ -127,7 +131,7 @@ export const initSigningPage = async (
   console.debug(LOG_PREFIX, '→ READY posted to', target);
 
   const payload = await waitForOpenerSignRequest(
-    allowedOrigins,
+    target,
     options?.timeout ?? DEFAULT_SIGN_REQUEST_TIMEOUT_MS,
   );
 

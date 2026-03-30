@@ -68,6 +68,13 @@ describe('initSigningPage()', () => {
     });
   });
 
+  describe('origin guard', () => {
+    it('rejects explicit wildcard allowedOrigin', async () => {
+      mockOpener();
+      await expect(initSigningPage(mockPrivy(), { allowedOrigin: '*' })).rejects.toThrow();
+    });
+  });
+
   describe('READY handshake', () => {
     it('posts READY to opener using opener.location.origin as target', async () => {
       vi.useFakeTimers();
@@ -81,7 +88,7 @@ describe('initSigningPage()', () => {
       await expect(promise).rejects.toBeInstanceOf(TimeoutError);
     });
 
-    it('rejects when opener origin is not readable (cross-origin)', async () => {
+    it('rejects when allowedOrigin is omitted and opener origin is not readable', async () => {
       vi.stubGlobal('opener', {
         postMessage: vi.fn(),
         get location() {
@@ -91,29 +98,19 @@ describe('initSigningPage()', () => {
         },
       });
 
-      await expect(initSigningPage(mockPrivy())).rejects.toThrow(DOMException);
+      await expect(initSigningPage(mockPrivy())).rejects.toThrow(
+        'A specific target origin is required; wildcard origins are not allowed',
+      );
     });
 
-    it('merges additional allowedOrigins with opener origin', async () => {
+    it('uses allowedOrigin as postMessage target when provided', async () => {
       vi.useFakeTimers();
       const opener = mockOpener();
-      const extra = 'https://other.com';
-      const promise = initSigningPage(mockPrivy(), { allowedOrigins: [extra] });
+      const allowed = 'https://custom.example.com';
+      const promise = initSigningPage(mockPrivy(), { allowedOrigin: allowed });
 
       await flushPrivyIframeLoad();
-      expect(opener.postMessage).toHaveBeenCalledWith({ type: 'READY' }, OPENER_ORIGIN);
-
-      vi.runAllTimers();
-      await expect(promise).rejects.toBeInstanceOf(TimeoutError);
-    });
-
-    it('accepts empty allowedOrigins and still targets opener origin', async () => {
-      vi.useFakeTimers();
-      const opener = mockOpener();
-      const promise = initSigningPage(mockPrivy(), { allowedOrigins: [] });
-
-      await flushPrivyIframeLoad();
-      expect(opener.postMessage).toHaveBeenCalledWith({ type: 'READY' }, OPENER_ORIGIN);
+      expect(opener.postMessage).toHaveBeenCalledWith({ type: 'READY' }, allowed);
 
       vi.runAllTimers();
       await expect(promise).rejects.toBeInstanceOf(TimeoutError);
