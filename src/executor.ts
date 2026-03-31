@@ -18,7 +18,6 @@ import type { ChannelMsg, SigningPayload } from '@/types';
 import { LOG_PREFIX } from '@/log';
 
 const SIGN_PAGE_URL = 'http://localhost:5173/#sign';
-const SIGN_PAGE_ORIGIN = new URL(SIGN_PAGE_URL).origin;
 
 class SignPage {
   private static instance: SignPage | null = null;
@@ -32,8 +31,11 @@ class SignPage {
 
   private request<T>(payload: SigningPayload): Promise<T> {
     return new Promise((resolve, reject) => {
-      const popup = window.open(SIGN_PAGE_URL, '_blank', 'popup,width=420,height=640');
-      if (!popup) return reject(new Error('Popup blocked'));
+      // Use the near-connect sandbox API to open the sign page.
+      // Native `window.open()` won't work here because the sandbox
+      // proxies popup messaging, causing `event.origin` and
+      // `event.source` to reflect the sandbox rather than the popup.
+      const popup = window.selector.open(SIGN_PAGE_URL);
 
       const cleanup = () => {
         window.removeEventListener('message', handler);
@@ -41,16 +43,11 @@ class SignPage {
       };
 
       const handler = (event: MessageEvent) => {
-        if (event.source !== popup) return;
-        if (event.origin !== SIGN_PAGE_ORIGIN) return;
-
+        console.log(event);
         const msg = event.data as ChannelMsg;
 
         if (msg.type === 'READY') {
-          popup.postMessage(
-            { type: 'SIGN_REQUEST', payload } satisfies ChannelMsg,
-            SIGN_PAGE_ORIGIN,
-          );
+          popup.postMessage({ type: 'SIGN_REQUEST', payload } satisfies ChannelMsg);
         } else if (msg.type === 'RESULT') {
           cleanup();
           resolve(msg.result as T);
