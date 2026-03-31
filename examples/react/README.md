@@ -2,11 +2,11 @@
 
 This example provides a simple signing UI wired to the local library build.
 
-Run the library in watch mode from the repo root so changes propagate:
+Run the library in continuous build and serve mode:
 
 ```bash
 npm install
-npm run build:watch
+npm run build-serve:watch
 ```
 
 Then start the React app:

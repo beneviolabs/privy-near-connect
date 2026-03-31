@@ -1,5 +1,5 @@
 import { NearConnector, NearWalletBase } from '@hot-labs/near-connect';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import type {
   SignMessageParams,
@@ -24,14 +24,20 @@ const connector = new NearConnector({
 
 type Props = {
   network: 'testnet' | 'mainnet';
+  /** When true, automatically connects myprivywallet without showing the wallet selector. */
+  isLoggedIn: boolean;
 };
 
-export function SigningExamples({ network }: Props) {
+export function SigningExamples({ network, isLoggedIn }: Props) {
   const [wallet, setWallet] = useState<NearWalletBase | null>(null);
   const [accountId, setAccountId] = useState<string | null>(null);
   const [status, setStatus] = useState<ActionStatus>('idle');
   const [result, setResult] = useState<unknown>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Tracks whether the user explicitly disconnected so the auto-connect
+  // effect does not immediately reconnect myprivywallet after a manual disconnect.
+  const manuallyDisconnected = useRef(false);
 
   useEffect(() => {
     const onSignIn = async () => {
@@ -56,10 +62,23 @@ export function SigningExamples({ network }: Props) {
     connector.network = network;
   }, [network]);
 
+  useEffect(() => {
+    if (!isLoggedIn) {
+      // Reset so the next login auto-connects again.
+      manuallyDisconnected.current = false;
+      return;
+    }
+    if (!accountId && !manuallyDisconnected.current) {
+      connector.connect({ walletId: 'myprivywallet' });
+    }
+  }, [isLoggedIn, accountId]);
+
   async function handleConnect() {
     if (accountId) {
+      manuallyDisconnected.current = true;
       await connector.disconnect();
     } else {
+      manuallyDisconnected.current = false;
       await connector.connect();
     }
   }
@@ -112,7 +131,7 @@ export function SigningExamples({ network }: Props) {
     <div style={{ marginTop: 32, borderTop: '2px solid #e0e0e0', paddingTop: 24 }}>
       <div style={{ marginBottom: 12 }}>
         <button onClick={handleConnect}>
-          {accountId ? `${accountId} (disconnect)` : 'Connect Near Connector'}
+          {accountId ? `${accountId} (disconnect)` : 'Connect other wallet'}
         </button>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 280 }}>

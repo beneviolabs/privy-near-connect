@@ -27,7 +27,7 @@
   },
   "scripts": {
     "build": "tsup",
-    "build:watch": "tsup --watch",
+    "build-serve:watch": "concurrently \"tsup --watch\" \"npm run serve:dist\"",
     "serve:dist": "serve dist -l 8001 --cors",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
@@ -39,7 +39,7 @@
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
-    "@eslint/js": "^9.12.0",
+    "concurrently": "^9.0.0",
     "@types/node": "^22.7.8",
     "@vitest/coverage-v8": "^2.1.9",
     "eslint": "^9.12.0",

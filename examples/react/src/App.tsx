@@ -202,7 +202,7 @@ export default function App() {
           </label>
         </div>
 
-        <SigningExamples network={network} />
+        <SigningExamples network={network} isLoggedIn={user != null} />
         <div
           style={{
             marginBottom: 16,
