@@ -3,14 +3,6 @@ import Privy, { LocalStorage, create as createWallet } from '@privy-io/js-sdk-co
 import { SideNav } from './components/sidebar/SideNav';
 import { LoginSection } from './components/login/LoginSection';
 import { SigningExamples } from './components/signing/SigningExamples';
-import {
-  payloadWithNetwork,
-  TEST_DELEGATE_PAYLOAD,
-  TEST_MESSAGE_PAYLOAD,
-  TEST_TX_PAYLOAD,
-  TEST_TXS_PAYLOAD,
-} from './utils/signing/payloads';
-import { openSigningPopup, type ActionStatus } from './utils/signing/openSigningPopup';
 
 function makePrivy(appId: string, clientId: string): Privy {
   return new Privy({ appId, clientId, storage: new LocalStorage() });
@@ -65,9 +57,6 @@ export default function App() {
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
-  const [actionStatus, setActionStatus] = useState<ActionStatus>('idle');
-  const [actionResult, setActionResult] = useState<unknown>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
   const [network, setNetwork] = useState<'testnet' | 'mainnet'>('testnet');
 
   useEffect(() => {
@@ -154,8 +143,6 @@ export default function App() {
     setActionError(null);
   }
 
-  const busy = actionStatus === 'opening' || actionStatus === 'waiting';
-
   let mainContent: React.ReactNode;
 
   if (!privy) {
@@ -187,7 +174,7 @@ export default function App() {
     mainContent = (
       <>
         <div style={{ marginBottom: 12 }}>
-          <button onClick={handleLogout}>Logout</button>
+          <button onClick={handleLogout}>Logout from Privy</button>
         </div>
         <div style={{ marginBottom: 16 }}>
           <label style={{ fontSize: 13, marginRight: 12 }}>Network:</label>
@@ -215,44 +202,7 @@ export default function App() {
           </label>
         </div>
 
-        <SigningExamples
-          busy={busy}
-          actionStatus={actionStatus}
-          actionError={actionError}
-          actionResult={actionResult}
-          onSignMessage={() =>
-            openSigningPopup(
-              payloadWithNetwork(TEST_MESSAGE_PAYLOAD, network),
-              setActionStatus,
-              setActionResult,
-              setActionError,
-            )
-          }
-          onSignTransaction={() =>
-            openSigningPopup(
-              payloadWithNetwork(TEST_TX_PAYLOAD, network),
-              setActionStatus,
-              setActionResult,
-              setActionError,
-            )
-          }
-          onSignTransactions={() =>
-            openSigningPopup(
-              payloadWithNetwork(TEST_TXS_PAYLOAD, network),
-              setActionStatus,
-              setActionResult,
-              setActionError,
-            )
-          }
-          onSignDelegateActions={() =>
-            openSigningPopup(
-              payloadWithNetwork(TEST_DELEGATE_PAYLOAD, network),
-              setActionStatus,
-              setActionResult,
-              setActionError,
-            )
-          }
-        />
+        <SigningExamples network={network} />
         <div
           style={{
             marginBottom: 16,
