@@ -2,34 +2,15 @@ import type Privy from '@privy-io/js-sdk-core';
 
 import { NoOpenerError, TimeoutError } from '@/sign-page.errors';
 import { buildSignFn } from '@/signing/signer';
-import type { PrivyNearWallet, RpcOptions } from '@/signing/signer';
-import type { ChannelMsg, SigningPayload } from '@/types';
+import type { ChannelMsg, SignPageOptions, SignPageSession, SigningPayload } from '@/types';
 import { LOG_PREFIX } from '@/log';
+
+export type { SignPageOptions, SignPageSession } from '@/types';
 
 const DEFAULT_SIGN_REQUEST_TIMEOUT_MS = 30_000;
 const READY_MESSAGE = { type: 'READY' } as const satisfies ChannelMsg;
 const INVALID_ORIGIN_ERROR_MESSAGE =
   'A specific target origin is required; wildcard origins are not allowed';
-
-/** Options for configuring signing page handshake behavior. */
-export type SignPageOptions = {
-  /** Milliseconds to wait for `SIGN_REQUEST` before rejecting. */
-  timeout?: number;
-  /** Exact trusted origin to use for postMessage target and message filtering. Defaults to `window.opener.location.origin` when same-origin access is available. */
-  allowedOrigin?: string;
-  /** Privy NEAR wallet to use during signing. If omitted, the wallet is fetched from `privy.user.get()` during signing. */
-  wallet?: PrivyNearWallet;
-  /** RPC connection options forwarded to {@link signAndSendTransaction} for transaction payloads. Defaults to the public RPC for the payload's network. */
-  rpcOptions?: RpcOptions;
-};
-
-/** Session returned by `initSigningPage` after receiving a signing payload. */
-export type SignPageSession = {
-  /** Payload received from the opener via `SIGN_REQUEST`. */
-  payload: SigningPayload;
-  /** Signs the payload using Privy and posts the result to the opener. */
-  sign: () => Promise<void>;
-};
 
 let cleanupMountedIframe: (() => void) | undefined;
 

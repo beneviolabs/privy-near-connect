@@ -39,9 +39,12 @@ export default function SignPage() {
     try {
       await session.sign();
     } catch (e) {
+      const message = (e as Error).message;
       console.error('Error during signing:', e);
-      setErrorMsg((e as Error).message);
+      setErrorMsg(message);
       setStatus('error');
+      // Notify the opener so it can surface the error on the main screen
+      window.opener?.postMessage({ type: 'ERROR', message }, window.location.origin);
     }
   }
 
