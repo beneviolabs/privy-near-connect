@@ -19,58 +19,42 @@ import { LOG_PREFIX } from '@/log';
 
 const SIGN_PAGE_URL = 'http://localhost:5173/#sign';
 
-class SignPage {
-  private static instance: SignPage | null = null;
+function requestWallet<T>(payload: SigningPayload): Promise<T> {
+  return new Promise((resolve, reject) => {
+    // Use the near-connect sandbox API to open the sign page.
+    // Native `window.open()` won't work here because the sandbox
+    // proxies popup messaging, causing `event.origin` and
+    // `event.source` to reflect the sandbox rather than the popup.
+    const popup = window.selector.open(SIGN_PAGE_URL);
 
-  static getInstance(): SignPage {
-    if (!SignPage.instance) SignPage.instance = new SignPage();
-    return SignPage.instance;
-  }
+    const cleanup = () => {
+      window.removeEventListener('message', handler);
+      clearInterval(closedPoll);
+    };
 
-  private constructor() {}
+    const handler = (event: MessageEvent) => {
+      const msg = event.data as ChannelMsg;
 
-  private request<T>(payload: SigningPayload): Promise<T> {
-    return new Promise((resolve, reject) => {
-      // Use the near-connect sandbox API to open the sign page.
-      // Native `window.open()` won't work here because the sandbox
-      // proxies popup messaging, causing `event.origin` and
-      // `event.source` to reflect the sandbox rather than the popup.
-      const popup = window.selector.open(SIGN_PAGE_URL);
+      if (msg.type === 'READY') {
+        popup.postMessage({ type: 'SIGN_REQUEST', payload } satisfies ChannelMsg);
+      } else if (msg.type === 'RESULT') {
+        cleanup();
+        resolve(msg.result as T);
+      } else if (msg.type === 'ERROR') {
+        cleanup();
+        reject(new Error(msg.message));
+      }
+    };
 
-      const cleanup = () => {
-        window.removeEventListener('message', handler);
-        clearInterval(closedPoll);
-      };
+    const closedPoll = setInterval(() => {
+      if (popup.closed) {
+        cleanup();
+        reject(new Error('Sign page closed'));
+      }
+    }, 300);
 
-      const handler = (event: MessageEvent) => {
-        console.log(event);
-        const msg = event.data as ChannelMsg;
-
-        if (msg.type === 'READY') {
-          popup.postMessage({ type: 'SIGN_REQUEST', payload } satisfies ChannelMsg);
-        } else if (msg.type === 'RESULT') {
-          cleanup();
-          resolve(msg.result as T);
-        } else if (msg.type === 'ERROR') {
-          cleanup();
-          reject(new Error(msg.message));
-        }
-      };
-
-      const closedPoll = setInterval(() => {
-        if (popup.closed) {
-          cleanup();
-          reject(new Error('Sign page closed'));
-        }
-      }, 300);
-
-      window.addEventListener('message', handler);
-    });
-  }
-
-  signMessage(params: SignMessageParams): Promise<SignedMessage> {
-    return this.request({ kind: 'signMessage', ...params });
-  }
+    window.addEventListener('message', handler);
+  });
 }
 
 const wallet: NearWalletBase = {
@@ -107,29 +91,25 @@ const wallet: NearWalletBase = {
   },
 
   async signMessage(params: SignMessageParams): Promise<SignedMessage> {
-    console.log(LOG_PREFIX, 'signMessage', params);
-    return SignPage.getInstance().signMessage(params);
+    return requestWallet({ kind: 'signMessage', ...params });
   },
 
   async signAndSendTransaction(
-    _params: SignAndSendTransactionParams,
+    params: SignAndSendTransactionParams,
   ): Promise<FinalExecutionOutcome> {
-    console.log(LOG_PREFIX, 'signAndSendTransaction', _params);
-    return {} as FinalExecutionOutcome;
+    return requestWallet({ kind: 'signAndSendTransaction', ...params });
   },
 
   async signAndSendTransactions(
-    _params: SignAndSendTransactionsParams,
+    params: SignAndSendTransactionsParams,
   ): Promise<FinalExecutionOutcome[]> {
-    console.log(LOG_PREFIX, 'signAndSendTransactions', _params);
-    return [];
+    return requestWallet({ kind: 'signAndSendTransactions', ...params });
   },
 
   async signDelegateActions(
-    _params: SignDelegateActionsParams,
+    params: SignDelegateActionsParams,
   ): Promise<SignDelegateActionsResponse> {
-    console.log(LOG_PREFIX, 'signDelegateActions', _params);
-    return { signedDelegateActions: [] };
+    return requestWallet({ kind: 'signDelegateActions', ...params });
   },
 };
 
