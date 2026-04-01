@@ -71,9 +71,9 @@ describe('initSigningPage()', () => {
   describe('allowedOrigins guard', () => {
     it('throws WildcardOriginError when allowedOrigins contains *', async () => {
       mockOpener();
-      await expect(
-        initSigningPage(mockPrivy(), { allowedOrigins: ['*'] }),
-      ).rejects.toBeInstanceOf(WildcardOriginError);
+      await expect(initSigningPage(mockPrivy(), { allowedOrigins: ['*'] })).rejects.toBeInstanceOf(
+        WildcardOriginError,
+      );
     });
 
     it('throws WildcardOriginError when * is mixed with valid origins', async () => {
