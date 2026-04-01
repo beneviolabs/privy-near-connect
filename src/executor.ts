@@ -17,7 +17,7 @@ import type { FinalExecutionOutcome } from '@near-js/types';
 import type { ChannelMsg, SigningPayload } from '@/types';
 import { LOG_PREFIX } from '@/log';
 
-const SIGN_PAGE_URL = new URL('#privy-sign', window.selector.location).href;
+const SIGN_PAGE_URL = new URL('#privy-sign', 'http://localhost:5173').href;
 
 function requestWallet<T>(payload: SigningPayload): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -33,9 +33,17 @@ function requestWallet<T>(payload: SigningPayload): Promise<T> {
     };
 
     const handler = (event: MessageEvent) => {
+      console.debug(
+        LOG_PREFIX,
+        'Received message from sign page',
+        event.data,
+        'origin:',
+        event.origin,
+      );
       const msg = event.data as ChannelMsg;
 
       if (msg.type === 'READY') {
+        console.log(LOG_PREFIX, 'Sign page is ready, sending SIGN_REQUEST', payload);
         popup.postMessage({ type: 'SIGN_REQUEST', payload } satisfies ChannelMsg);
       } else if (msg.type === 'RESULT') {
         cleanup();
@@ -49,7 +57,7 @@ function requestWallet<T>(payload: SigningPayload): Promise<T> {
     const closedPoll = setInterval(() => {
       if (popup.closed) {
         cleanup();
-        reject(new Error('Sign page closed'));
+        reject(new Error('Privy Sign window closed'));
       }
     }, 300);
 

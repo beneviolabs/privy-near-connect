@@ -6,6 +6,14 @@ export class NoOpenerError extends Error {
   }
 }
 
+/** Thrown when `allowedOrigins` contains a wildcard entry (`'*'`). */
+export class WildcardOriginError extends Error {
+  constructor() {
+    super("allowedOrigins must not contain '*' — specify explicit origins instead");
+    this.name = 'WildcardOriginError';
+  }
+}
+
 /** Thrown when a `SIGN_REQUEST` message is not received before timeout expires. */
 export class TimeoutError extends Error {
   constructor(ms: number) {

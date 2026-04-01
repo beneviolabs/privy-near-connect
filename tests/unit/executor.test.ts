@@ -116,7 +116,7 @@ describe('requestWallet', () => {
     const promise = wallet.signMessage(PARAMS);
     popup.close();
     vi.advanceTimersByTime(300);
-    await expect(promise).rejects.toThrow('Sign page closed');
+    await expect(promise).rejects.toThrow('Privy Sign window closed');
   });
 
   it('ignores unrecognised message types', async () => {
