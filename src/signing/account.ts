@@ -112,7 +112,7 @@ export class PrivySigner extends Signer {
  * Most built-in method in puts and return types are compatible with NearConnector types but some
  * which aren't or don't exist in near-api-js are implemented here and annotated with nc* prefix, e.g. {@link ncSignMessage}.
  */
-export class CustomAccount extends Account {
+export class AccountWithPrivySigner extends Account {
   /** The Privy signer used for all signing operations on this account. */
   readonly privySigner: PrivySigner;
 

@@ -79,7 +79,7 @@ describe('requestWallet', () => {
   it('opens the sign page popup', () => {
     wallet.signMessage(PARAMS).catch(() => {});
     expect(mockWindowOpen).toHaveBeenCalledWith(
-      new URL('#privy-sign', window.selector.location).href,
+      new URL('#privy-sign', 'http://localhost:5173').href,
     );
   });
 

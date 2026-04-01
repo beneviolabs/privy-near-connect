@@ -13,7 +13,7 @@ import {
   WindowOpenerClosedError,
 } from '@/signing/errors';
 import { buildSignFn, type PrivyNearWallet } from '@/signing/signer';
-import { CustomAccount } from '@/signing/account';
+import { AccountWithPrivySigner } from '@/signing/account';
 import type { SigningPayload } from '@/types';
 
 const OPENER_ORIGIN = 'https://app.example.com';
@@ -92,10 +92,10 @@ type MockPrivy = Privy & {
 vi.mock('@/signing/account', async () => {
   const actual = await vi.importActual('@/signing/account');
   // Must use `function`, not an arrow function — vitest v4 requires a constructable implementation.
-  const MockCustomAccount = vi.fn(function () {
+  const MockAccountWithPrivySigner = vi.fn(function () {
     return mockAccountInstance;
   });
-  return { ...actual, CustomAccount: MockCustomAccount };
+  return { ...actual, AccountWithPrivySigner: MockAccountWithPrivySigner };
 });
 
 function mockOpener() {
@@ -138,7 +138,7 @@ describe('buildSignFn()', () => {
       signAndSendTransactions: vi.fn().mockResolvedValue(TEST_TX_RESULTS),
       ncSignDelegateActions: vi.fn().mockResolvedValue(TEST_DELEGATE_RESULT),
     };
-    vi.mocked(CustomAccount).mockImplementation(function () {
+    vi.mocked(AccountWithPrivySigner).mockImplementation(function () {
       return mockAccountInstance as never;
     });
     mockOpener();
