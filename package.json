@@ -60,5 +60,8 @@
     "@scure/base": "^2.0.0",
     "near-api-js": "^7.2.0",
     "viem": "^2.47.6"
+  },
+  "overrides": {
+    "viem": "^2.47.6"
   }
 }
