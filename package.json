@@ -53,7 +53,7 @@
     "@hot-labs/near-connect": "^0.11.1",
     "@near-js/crypto": "^2.5.1",
     "@near-js/types": "^2.5.1",
-    "@privy-io/js-sdk-core": "^0.60.5",
+    "@privy-io/js-sdk-core": "^0.60.6",
     "@scure/base": "^2.0.0",
     "near-api-js": "^7.2.0",
     "viem": "^2.47.6"
