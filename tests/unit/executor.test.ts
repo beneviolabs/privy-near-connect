@@ -168,8 +168,8 @@ describe('requestWallet', () => {
 describe('payload kind routing', () => {
   it('signIn sends kind: signIn and stores the first account ID', async () => {
     const promise = wallet.signIn();
-    send({ type: 'READY' });
-    send({ type: 'RESULT', result: [TEST_ACCOUNT] });
+    sendReady();
+    send(channelMsg.result([TEST_ACCOUNT]));
     await Promise.resolve();
     expect(popup.postMessage).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -189,8 +189,8 @@ describe('payload kind routing', () => {
       },
     };
     const promise = wallet.signInAndSignMessage(params);
-    send({ type: 'READY' });
-    send({ type: 'RESULT', result: [TEST_SIGNED_ACCOUNT] });
+    sendReady();
+    send(channelMsg.result([TEST_SIGNED_ACCOUNT] as Account[]));
     await Promise.resolve();
     expect(popup.postMessage).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -237,7 +237,7 @@ describe('buildSignFn()', () => {
 
     expect(mockAccountInstance.ncSignIn).toHaveBeenCalledWith(TEST_SIGN_IN_PAYLOAD);
     expect(opener.postMessage).toHaveBeenCalledWith(
-      { type: 'RESULT', result: TEST_ACCOUNTS_RESULT },
+      channelMsg.result(TEST_ACCOUNTS_RESULT),
       TEST_TARGET,
     );
     expect(window.close).toHaveBeenCalled();
@@ -258,7 +258,7 @@ describe('buildSignFn()', () => {
       TEST_SIGN_IN_AND_SIGN_MESSAGE_PAYLOAD,
     );
     expect(opener.postMessage).toHaveBeenCalledWith(
-      { type: 'RESULT', result: TEST_SIGN_IN_AND_SIGN_MESSAGE_RESULT },
+      channelMsg.result(TEST_SIGN_IN_AND_SIGN_MESSAGE_RESULT),
       TEST_TARGET,
     );
     expect(window.close).toHaveBeenCalled();
