@@ -157,10 +157,7 @@ describe('buildSignFn()', () => {
     await sign();
 
     expect(mockAccountInstance.ncSignMessage).toHaveBeenCalledWith(TEST_PAYLOAD);
-    expect(opener.postMessage).toHaveBeenCalledWith(
-      channelMsg.result(TEST_RESULT),
-      TEST_TARGET,
-    );
+    expect(opener.postMessage).toHaveBeenCalledWith(channelMsg.result(TEST_RESULT), TEST_TARGET);
     expect(window.close).toHaveBeenCalled();
   });
 
@@ -194,10 +191,7 @@ describe('buildSignFn()', () => {
     await sign();
 
     expect(mockAccountInstance.signAndSendTransaction).toHaveBeenCalled();
-    expect(opener.postMessage).toHaveBeenCalledWith(
-      channelMsg.result(TEST_TX_RESULT),
-      TEST_TARGET,
-    );
+    expect(opener.postMessage).toHaveBeenCalledWith(channelMsg.result(TEST_TX_RESULT), TEST_TARGET);
     expect(window.close).toHaveBeenCalled();
   });
 

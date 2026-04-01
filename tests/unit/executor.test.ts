@@ -2,6 +2,7 @@
 import { beforeAll, afterEach, describe, expect, it, vi } from 'vitest';
 import type { NearWalletBase } from '@hot-labs/near-connect/build/types/index.js';
 import { channelMsg, type ChannelMsg } from '@/types';
+import type { FinalExecutionOutcome } from '@near-js/types';
 
 // ---- popup factory -------------------------------------------------------
 
@@ -126,7 +127,7 @@ describe('requestWallet', () => {
     vi.useFakeTimers();
     const promise = wallet.signMessage(PARAMS);
 
-    send({ type: 'UNKNOWN', data: 'whatever' });
+    send({ type: 'UNKNOWN', data: 'whatever' } as unknown as ChannelMsg);
     vi.advanceTimersByTime(0);
     // UNKNOWN didn't trigger a SIGN_REQUEST to the popup
     expect(popup.postMessage).not.toHaveBeenCalled();
@@ -150,7 +151,7 @@ describe('payload kind routing', () => {
         payload: expect.objectContaining({ kind: 'signAndSendTransaction' }),
       }),
     );
-    send(channelMsg.result({}));
+    send(channelMsg.result({} as FinalExecutionOutcome));
     await promise;
   });
 
