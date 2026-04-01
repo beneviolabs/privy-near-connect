@@ -27,7 +27,7 @@ function requestWallet<T>(signPageURL: string, payload: SigningPayload): Promise
   return new Promise((resolve, reject) => {
     // Use the near-connect sandbox API to open the sign page.
     // Native `window.open()` won't work the same because the sandbox
-    // proxies popup messaging, causing `event.origin` and
+    // proxies popups and messaging. This causes `event.origin` and
     // `event.source` to reflect the sandbox rather than the popup.
     const popup = window.selector.open(signPageURL);
 
@@ -37,6 +37,7 @@ function requestWallet<T>(signPageURL: string, payload: SigningPayload): Promise
     };
 
     const handler = (event: MessageEvent) => {
+      // We do not validate `event.origin` here and rely on the sandbox to do this.
       console.debug(
         LOG_PREFIX,
         'Received message from sign page',

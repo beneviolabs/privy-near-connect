@@ -5,6 +5,11 @@ import type { SigningPayload } from '@/types';
 
 import { NoOpenerError, TimeoutError, WildcardOriginError } from '@/sign-page.errors';
 import { initSigningPage } from '@/sign-page';
+import { buildSignFn } from '@/signing/signer';
+
+vi.mock('@/signing/signer', () => ({
+  buildSignFn: vi.fn().mockReturnValue(vi.fn()),
+}));
 
 // ---------- helpers ----------
 
@@ -58,6 +63,7 @@ describe('initSigningPage()', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.useRealTimers();
+    vi.clearAllMocks();
     document.querySelectorAll('iframe[data-privy-embed]').forEach((el) => el.remove());
   });
 
@@ -203,6 +209,44 @@ describe('initSigningPage()', () => {
 
       await expect(promise).rejects.toBeInstanceOf(TimeoutError);
       expect(document.querySelector('iframe[data-privy-embed]')).not.toBeNull();
+    });
+
+    it('ignores a second SIGN_REQUEST sent after the first was accepted', async () => {
+      mockOpener();
+      const promise = initSigningPage(mockPrivy());
+      await flushPrivyIframeLoad();
+
+      const secondPayload: SigningPayload = {
+        kind: 'signMessage',
+        message: 'evil',
+        recipient: 'attacker.near',
+        nonce: new Uint8Array(32),
+      };
+
+      dispatchSignRequest(TEST_PAYLOAD);
+      dispatchSignRequest(secondPayload); // listener already removed — ignored
+
+      const session = await promise;
+      expect(session.payload).toEqual(TEST_PAYLOAD);
+    });
+
+    it('locks targetOrigin to the first SIGN_REQUEST sender — later senders cannot hijack it', async () => {
+      mockOpener();
+      const promise = initSigningPage(mockPrivy());
+      await flushPrivyIframeLoad();
+
+      dispatchSignRequest(TEST_PAYLOAD, OPENER_ORIGIN);
+      dispatchSignRequest(TEST_PAYLOAD, 'https://evil.com'); // ignored
+
+      await promise;
+
+      expect(vi.mocked(buildSignFn)).toHaveBeenCalledWith(
+        OPENER_ORIGIN,
+        expect.anything(),
+        TEST_PAYLOAD,
+        undefined,
+        undefined,
+      );
     });
   });
 });
