@@ -1,4 +1,5 @@
 import type {
+  SignInAndSignMessageParams,
   SignAndSendTransactionsParams,
   SignAndSendTransactionParams,
   SignDelegateActionsParams,
@@ -7,6 +8,7 @@ import type {
 import type { FinalExecutionOutcome } from '@near-js/types';
 import type {
   Account,
+  AccountWithSignedMessage,
   SignInParams,
   SignedMessage,
   SignDelegateActionsResponse,
@@ -15,6 +17,7 @@ import type { RpcOptions } from '@/signing/account';
 import type { PrivyNearWallet } from '@/signing/signer';
 
 export type {
+  SignInAndSignMessageParams,
   SignAndSendTransactionsParams,
   SignAndSendTransactionParams,
   SignDelegateActionsParams,
@@ -42,6 +45,7 @@ export type {
  */
 export type SigningPayload =
   | ({ kind: 'signIn' } & SignInParams)
+  | ({ kind: 'signInAndSignMessage' } & SignInAndSignMessageParams)
   | ({ kind: 'signMessage' } & SignMessageParams)
   | ({ kind: 'signAndSendTransaction' } & SignAndSendTransactionParams)
   | ({ kind: 'signAndSendTransactions' } & SignAndSendTransactionsParams)
@@ -54,6 +58,7 @@ export type SigningResult =
   | FinalExecutionOutcome
   | FinalExecutionOutcome[]
   | Account[]
+  | AccountWithSignedMessage[]
   | void;
 
 export type ChannelMsg =

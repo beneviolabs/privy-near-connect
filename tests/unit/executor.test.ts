@@ -43,6 +43,14 @@ const TEST_ACCOUNT_ID = '718c0ad670786cc74ed01f50c063361531b42417f78d04f691b9c8e
 const TEST_ACCOUNT: Account = {
   accountId: TEST_ACCOUNT_ID,
 };
+const TEST_SIGNED_ACCOUNT = {
+  accountId: TEST_ACCOUNT_ID,
+  signedMessage: {
+    accountId: TEST_ACCOUNT_ID,
+    publicKey: 'ed25519:abc',
+    signature: 'sig',
+  },
+};
 
 beforeAll(async () => {
   popup = makePopup();
@@ -161,6 +169,27 @@ describe('payload kind routing', () => {
       }),
     );
     await expect(promise).resolves.toEqual([TEST_ACCOUNT]);
+    expect(mockStorageSet).toHaveBeenCalledWith('privy-near-connect:account-id', TEST_ACCOUNT_ID);
+  });
+
+  it('signInAndSignMessage sends kind: signInAndSignMessage and stores the first account ID', async () => {
+    const params = {
+      messageParams: {
+        message: 'hello',
+        recipient: 'bob.near',
+        nonce: new Uint8Array(32),
+      },
+    };
+    const promise = wallet.signInAndSignMessage(params);
+    send({ type: 'READY' });
+    send({ type: 'RESULT', result: [TEST_SIGNED_ACCOUNT] });
+    await Promise.resolve();
+    expect(popup.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({ kind: 'signInAndSignMessage', ...params }),
+      }),
+    );
+    await expect(promise).resolves.toEqual([TEST_SIGNED_ACCOUNT]);
     expect(mockStorageSet).toHaveBeenCalledWith('privy-near-connect:account-id', TEST_ACCOUNT_ID);
   });
 

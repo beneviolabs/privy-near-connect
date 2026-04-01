@@ -91,6 +91,9 @@ export function buildSignFn(
       case 'signIn':
         result = await account.ncSignIn(payload);
         break;
+      case 'signInAndSignMessage':
+        result = await account.ncSignInAndSignMessage(payload);
+        break;
       case 'signMessage':
         result = await account.ncSignMessage(payload);
         break;

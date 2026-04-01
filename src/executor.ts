@@ -74,10 +74,19 @@ const wallet: NearWalletBase = {
   },
 
   async signInAndSignMessage(
-    _data: SignInAndSignMessageParams,
+    data: SignInAndSignMessageParams,
   ): Promise<AccountWithSignedMessage[]> {
-    console.log(LOG_PREFIX, 'signInAndSignMessage', _data);
-    return [];
+    const accounts = await requestWallet<AccountWithSignedMessage[]>({
+      kind: 'signInAndSignMessage',
+      ...data,
+    });
+    const accountId = accounts[0]?.accountId;
+
+    if (accountId) {
+      await window.selector.storage.set(ACCOUNT_ID_STORAGE_KEY, accountId);
+    }
+
+    return accounts;
   },
 
   async signOut(_data?: { network?: string }): Promise<void> {
@@ -85,7 +94,7 @@ const wallet: NearWalletBase = {
     await window.selector.storage.remove(ACCOUNT_ID_STORAGE_KEY);
   },
 
-  async getAccounts(data?: { network?: Network }): Promise<Account[]> {
+  async getAccounts(_data?: { network?: Network }): Promise<Account[]> {
     const accountId = await window.selector.storage.get(ACCOUNT_ID_STORAGE_KEY);
 
     if (!accountId) return [];
