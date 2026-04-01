@@ -33,3 +33,5 @@ npm run dev
 Open the app at http://localhost:5173.
 
 ## FAQ and Troubleshooting
+- You can copy the manifest in examples/react app and add it to https://azbang.github.io/near-connect/ to do cross-origin. Make sure it's being served already.
+- If you run into `Uncaught (in promise) Permission denied` error when launching the signing page or elsewhere it most likely is related to window opening so check the origin being specified and cross-origin access.

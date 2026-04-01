@@ -16,7 +16,8 @@ import type {
 import type { FinalExecutionOutcome } from '@near-js/types';
 
 import type { ChannelMsg, SigningPayload } from '@/types';
-import { LOG_PREFIX } from '@/log';
+
+const LOG_PREFIX = '[privy-near-connect-executor]';
 
 const ACCOUNT_ID_STORAGE_KEY = 'privy-near-connect:account-id';
 type WalletManifestwithMetadata = WalletManifest & {
@@ -30,7 +31,8 @@ function requestWallet<T>(signPageURL: string, payload: SigningPayload): Promise
     // Use the near-connect sandbox API to open the sign page.
     // Native `window.open()` won't work the same because the sandbox
     // proxies popup messaging, causing `event.origin` and
-    // `event.source` to reflect the sandbox rather than the popup.
+    // `event.source` to reflect the sandbox (running on dev's domain) rather than the popup
+    // (running on wallet domain).
     const popup = window.selector.open(signPageURL);
 
     const cleanup = () => {
@@ -75,7 +77,10 @@ const wallet: NearWalletBase & { manifest: WalletManifestwithMetadata } = {
   manifest: {} as WalletManifestwithMetadata,
 
   async signIn(data?: SignInParams): Promise<Account[]> {
-    const accounts = await requestWallet<Account[]>({ kind: 'signIn', ...data });
+    const accounts = await requestWallet<Account[]>(this.manifest.metadata.signPageURL, {
+      kind: 'signIn',
+      ...data,
+    });
     const accountId = accounts[0]?.accountId;
 
     if (accountId) {
@@ -88,10 +93,13 @@ const wallet: NearWalletBase & { manifest: WalletManifestwithMetadata } = {
   async signInAndSignMessage(
     data: SignInAndSignMessageParams,
   ): Promise<AccountWithSignedMessage[]> {
-    const accounts = await requestWallet<AccountWithSignedMessage[]>({
-      kind: 'signInAndSignMessage',
-      ...data,
-    });
+    const accounts = await requestWallet<AccountWithSignedMessage[]>(
+      this.manifest.metadata.signPageURL,
+      {
+        kind: 'signInAndSignMessage',
+        ...data,
+      },
+    );
     const accountId = accounts[0]?.accountId;
 
     if (accountId) {
