@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type Privy from '@privy-io/js-sdk-core';
 import type { SigningPayload } from '@/types';
+import { channelMsg } from '@/types';
 
 import { NoOpenerError, TimeoutError, WildcardOriginError } from '@/sign-page.errors';
 import { initSigningPage } from '@/sign-page';
@@ -46,7 +47,10 @@ async function flushPrivyIframeLoad() {
 
 function dispatchSignRequest(payload = TEST_PAYLOAD, origin = OPENER_ORIGIN) {
   window.dispatchEvent(
-    new MessageEvent('message', { origin, data: { type: 'SIGN_REQUEST', payload } }),
+    new MessageEvent('message', {
+      origin,
+      data: channelMsg.signRequest(payload),
+    }),
   );
 }
 
@@ -97,7 +101,7 @@ describe('initSigningPage()', () => {
       const promise = initSigningPage(mockPrivy());
 
       await flushPrivyIframeLoad();
-      expect(opener.postMessage).toHaveBeenCalledWith({ type: 'READY' }, '*');
+      expect(opener.postMessage).toHaveBeenCalledWith(channelMsg.ready(), '*');
 
       vi.runAllTimers();
       await expect(promise).rejects.toBeInstanceOf(TimeoutError);
@@ -111,7 +115,7 @@ describe('initSigningPage()', () => {
       });
 
       await flushPrivyIframeLoad();
-      expect(opener.postMessage).toHaveBeenCalledWith({ type: 'READY' }, '*');
+      expect(opener.postMessage).toHaveBeenCalledWith(channelMsg.ready(), '*');
 
       vi.runAllTimers();
       await expect(promise).rejects.toBeInstanceOf(TimeoutError);
@@ -146,7 +150,7 @@ describe('initSigningPage()', () => {
   });
 
   describe('SIGN_REQUEST handling', () => {
-    it('resolves with the payload when SIGN_REQUEST arrives from the correct origin', async () => {
+    it('resolves with the payload when SIGN_REQUEST arrives', async () => {
       mockOpener();
       const promise = initSigningPage(mockPrivy());
       await flushPrivyIframeLoad();

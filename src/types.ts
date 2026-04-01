@@ -54,11 +54,39 @@ export type SigningResult =
   | Account[]
   | void;
 
-export type ChannelMsg =
+/** Identifies all messages originating from this library. */
+export const CHANNEL_SOURCE = 'privy-near-connect' as const;
+
+export type ChannelMsg = { source: typeof CHANNEL_SOURCE } & (
   | { type: 'READY' }
   | { type: 'SIGN_REQUEST'; payload: SigningPayload }
   | { type: 'RESULT'; result: SigningResult }
-  | { type: 'ERROR'; message: string };
+  | { type: 'ERROR'; message: string }
+);
+
+/** Constructors for {@link ChannelMsg} variants. Each stamps `source` automatically. */
+export const channelMsg = {
+  /** @returns A `READY` message. */
+  ready: (): ChannelMsg => ({ source: CHANNEL_SOURCE, type: 'READY' }),
+  /** @param payload - Signing payload. @returns A `SIGN_REQUEST` message. */
+  signRequest: (payload: SigningPayload): ChannelMsg => ({
+    source: CHANNEL_SOURCE,
+    type: 'SIGN_REQUEST',
+    payload,
+  }),
+  /** @param result - Signing result. @returns A `RESULT` message. */
+  result: (result: SigningResult): ChannelMsg => ({
+    source: CHANNEL_SOURCE,
+    type: 'RESULT',
+    result,
+  }),
+  /** @param message - Human-readable error description. @returns An `ERROR` message. */
+  error: (message: string): ChannelMsg => ({
+    source: CHANNEL_SOURCE,
+    type: 'ERROR',
+    message,
+  }),
+};
 
 /** Options for configuring signing page handshake behavior. */
 export type SignPageOptions = {

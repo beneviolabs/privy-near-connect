@@ -14,6 +14,7 @@ import type {
 } from '@hot-labs/near-connect/build/types/index.js';
 import type { FinalExecutionOutcome } from '@near-js/types';
 
+import { channelMsg, CHANNEL_SOURCE } from '@/types';
 import type { ChannelMsg, SigningPayload } from '@/types';
 import { LOG_PREFIX } from '@/log';
 
@@ -46,10 +47,11 @@ function requestWallet<T>(signPageURL: string, payload: SigningPayload): Promise
         event.origin,
       );
       const msg = event.data as ChannelMsg;
+      if (!msg || msg.source !== CHANNEL_SOURCE) return;
 
       if (msg.type === 'READY') {
         console.log(LOG_PREFIX, 'Sign page is ready, sending SIGN_REQUEST', payload);
-        popup.postMessage({ type: 'SIGN_REQUEST', payload } satisfies ChannelMsg);
+        popup.postMessage(channelMsg.signRequest(payload));
       } else if (msg.type === 'RESULT') {
         cleanup();
         resolve(msg.result as T);

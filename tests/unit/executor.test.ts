@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { beforeAll, afterEach, describe, expect, it, vi } from 'vitest';
 import type { NearWalletBase } from '@hot-labs/near-connect/build/types/index.js';
+import { channelMsg, type ChannelMsg } from '@/types';
 
 // ---- popup factory -------------------------------------------------------
 
@@ -26,8 +27,12 @@ function makePopup(): FakePopup {
 // ---- helpers -------------------------------------------------------
 
 /** Dispatch a ChannelMsg from the sign page into the main window. */
-function send(data: Record<string, unknown>) {
+function send(data: ChannelMsg) {
   window.dispatchEvent(new MessageEvent('message', { data }));
+}
+
+function sendReady() {
+  send(channelMsg.ready());
 }
 
 // ---- setup -------------------------------------------------------
@@ -52,8 +57,6 @@ beforeAll(async () => {
 });
 
 afterEach(() => {
-  // Drain any lingering message listeners from unresolved promises.
-  send({ type: 'ERROR', message: 'afterEach cleanup' });
   vi.clearAllMocks();
   vi.useRealTimers();
   // Fresh popup for next test.
@@ -85,29 +88,29 @@ describe('requestWallet', () => {
 
   it('posts SIGN_REQUEST to the popup on READY', async () => {
     const promise = wallet.signMessage(PARAMS);
-    send({ type: 'READY' });
+    sendReady();
     await Promise.resolve();
 
-    expect(popup.postMessage).toHaveBeenCalledWith({
-      type: 'SIGN_REQUEST',
-      payload: { kind: 'signMessage', ...PARAMS },
-    });
+    expect(popup.postMessage).toHaveBeenCalledWith(
+      channelMsg.signRequest({ kind: 'signMessage', ...PARAMS }),
+    );
 
-    send({ type: 'ERROR', message: 'cleanup' });
+    send(channelMsg.error('cleanup'));
     await promise.catch(() => {});
   });
 
   it('resolves with the result from RESULT', async () => {
     const result = { accountId: 'bob.near', publicKey: 'ed25519:abc', signature: 'sig' };
     const promise = wallet.signMessage(PARAMS);
-    send({ type: 'READY' });
-    send({ type: 'RESULT', result });
+    sendReady();
+    send(channelMsg.result(result));
     await expect(promise).resolves.toEqual(result);
   });
 
   it('rejects with the message from ERROR', async () => {
     const promise = wallet.signMessage(PARAMS);
-    send({ type: 'ERROR', message: 'user rejected' });
+    sendReady();
+    send(channelMsg.error('user rejected'));
     await expect(promise).rejects.toThrow('user rejected');
   });
 
@@ -122,12 +125,16 @@ describe('requestWallet', () => {
   it('ignores unrecognised message types', async () => {
     vi.useFakeTimers();
     const promise = wallet.signMessage(PARAMS);
+
     send({ type: 'UNKNOWN', data: 'whatever' });
-    // No resolve/reject yet — promise is still pending.
     vi.advanceTimersByTime(0);
+    // UNKNOWN didn't trigger a SIGN_REQUEST to the popup
     expect(popup.postMessage).not.toHaveBeenCalled();
-    // Clean up.
-    send({ type: 'ERROR', message: 'cleanup' });
+
+    // Clean up
+    sendReady();
+    await Promise.resolve();
+    send(channelMsg.error('cleanup'));
     await promise.catch(() => {});
   });
 });
@@ -136,42 +143,42 @@ describe('payload kind routing', () => {
   it('signAndSendTransaction sends kind: signAndSendTransaction', async () => {
     const params = { receiverId: 'contract.near', actions: [] };
     const promise = wallet.signAndSendTransaction(params);
-    send({ type: 'READY' });
+    sendReady();
     await Promise.resolve();
     expect(popup.postMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         payload: expect.objectContaining({ kind: 'signAndSendTransaction' }),
       }),
     );
-    send({ type: 'RESULT', result: {} });
+    send(channelMsg.result({}));
     await promise;
   });
 
   it('signAndSendTransactions sends kind: signAndSendTransactions', async () => {
     const params = { transactions: [] };
     const promise = wallet.signAndSendTransactions(params);
-    send({ type: 'READY' });
+    sendReady();
     await Promise.resolve();
     expect(popup.postMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         payload: expect.objectContaining({ kind: 'signAndSendTransactions' }),
       }),
     );
-    send({ type: 'RESULT', result: [] });
+    send(channelMsg.result([]));
     await promise;
   });
 
   it('signDelegateActions sends kind: signDelegateActions', async () => {
     const params = { delegateActions: [] };
     const promise = wallet.signDelegateActions(params);
-    send({ type: 'READY' });
+    sendReady();
     await Promise.resolve();
     expect(popup.postMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         payload: expect.objectContaining({ kind: 'signDelegateActions' }),
       }),
     );
-    send({ type: 'RESULT', result: { signedDelegateActions: [] } });
+    send(channelMsg.result({ signedDelegateActions: [] }));
     await promise;
   });
 });

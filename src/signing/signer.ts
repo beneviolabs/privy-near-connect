@@ -8,7 +8,8 @@ import {
 } from '@/signing/errors';
 import { createProvider, AccountWithPrivySigner } from '@/signing/account';
 import type { PrivyConfig, RpcOptions } from '@/signing/account';
-import type { ChannelMsg, SigningPayload, SigningResult } from '@/types';
+import { channelMsg } from '@/types';
+import type { SigningPayload, SigningResult } from '@/types';
 import { LOG_PREFIX } from '@/log';
 
 export type { RpcOptions } from '@/signing/account';
@@ -106,7 +107,7 @@ export function buildSignFn(
         throw new UnsupportedSigningPayloadError();
     }
 
-    const resultMsg = { type: 'RESULT', result } satisfies ChannelMsg;
+    const resultMsg = channelMsg.result(result);
     console.debug(LOG_PREFIX, '→ RESULT posted', resultMsg);
     (window.opener as Window).postMessage(resultMsg, target);
     window.close();
