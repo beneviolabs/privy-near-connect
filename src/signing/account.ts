@@ -141,7 +141,7 @@ export class CustomAccount extends Account {
    *   function-call access key is submitted on-chain before returning.
    * @returns A single-account array matching {@link NearWalletBase.signIn} result shape.
    */
-  async signIn(data?: SignInParams): Promise<NearConnectAccount[]> {
+  async ncSignIn(data?: SignInParams): Promise<NearConnectAccount[]> {
     if (data?.addFunctionCallKey) {
       const { contractId, publicKey, allowMethods, gasAllowance } = data.addFunctionCallKey;
       await this.addFunctionCallAccessKey({
@@ -157,6 +157,7 @@ export class CustomAccount extends Account {
         },
       ];
     }
+
     return [
       {
         accountId: this.privyConfig.wallet.address,

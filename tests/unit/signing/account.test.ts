@@ -122,10 +122,10 @@ describe('ncSignMessage()', () => {
   });
 });
 
-describe('signIn()', () => {
+describe('ncSignIn()', () => {
   it('returns the implicit account info for the configured wallet', async () => {
     const account = new CustomAccount(makeConfig(), createProvider());
-    const result = await account.signIn();
+    const result = await account.ncSignIn();
 
     expect(result).toEqual([
       {
@@ -141,7 +141,7 @@ describe('signIn()', () => {
       .mockResolvedValue({} as never);
     const account = new CustomAccount(makeConfig(), createProvider());
 
-    const result = await account.signIn({
+    const result = await account.ncSignIn({
       addFunctionCallKey: {
         contractId: 'guest-book.near',
         publicKey: 'ed25519:11111111111111111111111111111111',

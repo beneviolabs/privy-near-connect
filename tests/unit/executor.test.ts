@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { beforeAll, afterEach, describe, expect, it, vi } from 'vitest';
-import type { NearWalletBase } from '@hot-labs/near-connect/build/types/index.js';
+import type { Account, NearWalletBase } from '@hot-labs/near-connect/build/types/index.js';
 
 // ---- popup factory -------------------------------------------------------
 
@@ -35,10 +35,21 @@ function send(data: Record<string, unknown>) {
 let wallet: NearWalletBase;
 let mockWindowOpen: ReturnType<typeof vi.fn>;
 let popup: FakePopup;
+let mockStorageGet: ReturnType<typeof vi.fn>;
+let mockStorageSet: ReturnType<typeof vi.fn>;
+let mockStorageRemove: ReturnType<typeof vi.fn>;
+
+const TEST_ACCOUNT_ID = '718c0ad670786cc74ed01f50c063361531b42417f78d04f691b9c8e21923c5d8';
+const TEST_ACCOUNT: Account = {
+  accountId: TEST_ACCOUNT_ID,
+};
 
 beforeAll(async () => {
   popup = makePopup();
   mockWindowOpen = vi.fn().mockReturnValue(popup);
+  mockStorageGet = vi.fn();
+  mockStorageSet = vi.fn().mockResolvedValue(undefined);
+  mockStorageRemove = vi.fn().mockResolvedValue(undefined);
 
   vi.stubGlobal('selector', {
     ready: (w: NearWalletBase) => {
@@ -46,6 +57,12 @@ beforeAll(async () => {
     },
     open: mockWindowOpen,
     location: 'https://example.com/',
+    storage: {
+      get: mockStorageGet,
+      set: mockStorageSet,
+      remove: mockStorageRemove,
+      keys: vi.fn(),
+    },
   });
 
   await import('@/executor');
@@ -133,6 +150,35 @@ describe('requestWallet', () => {
 });
 
 describe('payload kind routing', () => {
+  it('signIn sends kind: signIn and stores the first account ID', async () => {
+    const promise = wallet.signIn();
+    send({ type: 'READY' });
+    send({ type: 'RESULT', result: [TEST_ACCOUNT] });
+    await Promise.resolve();
+    expect(popup.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({ kind: 'signIn' }),
+      }),
+    );
+    await expect(promise).resolves.toEqual([TEST_ACCOUNT]);
+    expect(mockStorageSet).toHaveBeenCalledWith('privy-near-connect:account-id', TEST_ACCOUNT_ID);
+  });
+
+  it('getAccounts returns the stored account', async () => {
+    mockStorageGet.mockResolvedValue(TEST_ACCOUNT_ID);
+
+    await expect(wallet.getAccounts({ network: 'testnet' })).resolves.toEqual([TEST_ACCOUNT]);
+    expect(mockStorageGet).toHaveBeenCalledWith('privy-near-connect:account-id');
+    expect(mockWindowOpen).not.toHaveBeenCalled();
+  });
+
+  it('getAccounts returns an empty array when no account is stored', async () => {
+    mockStorageGet.mockResolvedValue('');
+
+    await expect(wallet.getAccounts()).resolves.toEqual([]);
+    expect(mockWindowOpen).not.toHaveBeenCalled();
+  });
+
   it('signAndSendTransaction sends kind: signAndSendTransaction', async () => {
     const params = { receiverId: 'contract.near', actions: [] };
     const promise = wallet.signAndSendTransaction(params);

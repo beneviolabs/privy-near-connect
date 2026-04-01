@@ -2,6 +2,7 @@ import type {
   NearWalletBase,
   WalletManifest,
   Account,
+  Network,
   AccountWithSignedMessage,
   SignInParams,
   SignInAndSignMessageParams,
@@ -18,6 +19,7 @@ import type { ChannelMsg, SigningPayload } from '@/types';
 import { LOG_PREFIX } from '@/log';
 
 const SIGN_PAGE_URL = new URL('#privy-sign', window.selector.location).href;
+const ACCOUNT_ID_STORAGE_KEY = 'privy-near-connect:account-id';
 
 function requestWallet<T>(payload: SigningPayload): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -60,13 +62,15 @@ function requestWallet<T>(payload: SigningPayload): Promise<T> {
 const wallet: NearWalletBase = {
   manifest: {} as WalletManifest,
 
-  async signIn(_data?: SignInParams): Promise<Account[]> {
-    return [
-      {
-        accountId: 'example.near',
-        publicKey: '',
-      },
-    ];
+  async signIn(data?: SignInParams): Promise<Account[]> {
+    const accounts = await requestWallet<Account[]>({ kind: 'signIn', ...data });
+    const accountId = accounts[0]?.accountId;
+
+    if (accountId) {
+      await window.selector.storage.set(ACCOUNT_ID_STORAGE_KEY, accountId);
+    }
+
+    return accounts;
   },
 
   async signInAndSignMessage(
@@ -78,14 +82,17 @@ const wallet: NearWalletBase = {
 
   async signOut(_data?: { network?: string }): Promise<void> {
     console.log(LOG_PREFIX, 'signOut');
+    await window.selector.storage.remove(ACCOUNT_ID_STORAGE_KEY);
   },
 
-  async getAccounts(): Promise<Account[]> {
-    console.log(LOG_PREFIX, 'getAccounts');
+  async getAccounts(data?: { network?: Network }): Promise<Account[]> {
+    const accountId = await window.selector.storage.get(ACCOUNT_ID_STORAGE_KEY);
+
+    if (!accountId) return [];
+
     return [
       {
-        accountId: 'example.near',
-        publicKey: '',
+        accountId,
       },
     ];
   },

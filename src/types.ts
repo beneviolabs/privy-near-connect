@@ -7,6 +7,7 @@ import type {
 import type { FinalExecutionOutcome } from '@near-js/types';
 import type {
   Account,
+  SignInParams,
   SignedMessage,
   SignDelegateActionsResponse,
 } from '@hot-labs/near-connect/build/types/index.js';
@@ -40,6 +41,7 @@ export type {
  * omitted, signing defaults to `mainnet`.
  */
 export type SigningPayload =
+  | ({ kind: 'signIn' } & SignInParams)
   | ({ kind: 'signMessage' } & SignMessageParams)
   | ({ kind: 'signAndSendTransaction' } & SignAndSendTransactionParams)
   | ({ kind: 'signAndSendTransactions' } & SignAndSendTransactionsParams)

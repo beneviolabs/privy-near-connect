@@ -4,6 +4,7 @@ import type Privy from '@privy-io/js-sdk-core';
 import type { FinalExecutionOutcome } from '@near-js/types';
 
 import type {
+  Account,
   SignedMessage,
   SignDelegateActionsResponse,
 } from '@hot-labs/near-connect/build/types/index.js';
@@ -39,6 +40,17 @@ const TEST_RESULT: SignedMessage = {
   accountId: TEST_WALLET_ADDRESS,
   publicKey: 'ed25519:11111111111111111111111111111111',
   signature: 'AQID',
+};
+
+const TEST_ACCOUNTS_RESULT: Account[] = [
+  {
+    accountId: TEST_WALLET_ADDRESS,
+    publicKey: 'ed25519:11111111111111111111111111111111',
+  },
+];
+
+const TEST_SIGN_IN_PAYLOAD: SigningPayload = {
+  kind: 'signIn',
 };
 
 const TEST_TX_PAYLOAD: SigningPayload = {
@@ -79,6 +91,7 @@ const TEST_TX_RESULT = {
 const TEST_TX_RESULTS = [TEST_TX_RESULT, TEST_TX_RESULT] as FinalExecutionOutcome[];
 
 let mockAccountInstance: {
+  ncSignIn: ReturnType<typeof vi.fn>;
   ncSignMessage: ReturnType<typeof vi.fn>;
   signAndSendTransaction: ReturnType<typeof vi.fn>;
   signAndSendTransactions: ReturnType<typeof vi.fn>;
@@ -133,6 +146,7 @@ function mockPrivy(): MockPrivy {
 describe('buildSignFn()', () => {
   beforeEach(() => {
     mockAccountInstance = {
+      ncSignIn: vi.fn().mockResolvedValue(TEST_ACCOUNTS_RESULT),
       ncSignMessage: vi.fn().mockResolvedValue(TEST_RESULT),
       signAndSendTransaction: vi.fn().mockResolvedValue(TEST_TX_RESULT),
       signAndSendTransactions: vi.fn().mockResolvedValue(TEST_TX_RESULTS),
@@ -196,6 +210,20 @@ describe('buildSignFn()', () => {
     expect(mockAccountInstance.signAndSendTransaction).toHaveBeenCalled();
     expect(opener.postMessage).toHaveBeenCalledWith(
       { type: 'RESULT', result: TEST_TX_RESULT },
+      TEST_TARGET,
+    );
+    expect(window.close).toHaveBeenCalled();
+  });
+
+  it('routes signIn payload to account.ncSignIn and posts RESULT', async () => {
+    const opener = mockOpener();
+    const sign = buildSignFn(TEST_TARGET, mockPrivy(), TEST_SIGN_IN_PAYLOAD, TEST_WALLET);
+
+    await sign();
+
+    expect(mockAccountInstance.ncSignIn).toHaveBeenCalledWith(TEST_SIGN_IN_PAYLOAD);
+    expect(opener.postMessage).toHaveBeenCalledWith(
+      { type: 'RESULT', result: TEST_ACCOUNTS_RESULT },
       TEST_TARGET,
     );
     expect(window.close).toHaveBeenCalled();
