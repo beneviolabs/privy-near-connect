@@ -1,6 +1,6 @@
 /** Hash-based routes used in this app. Add new routes here. */
 export const ROUTES = {
-  sign: '#sign',
+  sign: '#privy-sign',
 } as const;
 
 /**

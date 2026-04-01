@@ -2,8 +2,6 @@
 import { beforeAll, afterEach, describe, expect, it, vi } from 'vitest';
 import type { NearWalletBase } from '@hot-labs/near-connect/build/types/index.js';
 
-const SIGN_PAGE_URL = 'http://example.com/sign';
-
 // ---- popup factory -------------------------------------------------------
 
 type FakePopup = {
@@ -47,7 +45,7 @@ beforeAll(async () => {
       wallet = w;
     },
     open: mockWindowOpen,
-    manifest: { signPageUrl: SIGN_PAGE_URL },
+    location: 'https://example.com/',
   });
 
   await import('@/executor');
@@ -80,7 +78,9 @@ describe('requestWallet', () => {
 
   it('opens the sign page popup', () => {
     wallet.signMessage(PARAMS).catch(() => {});
-    expect(mockWindowOpen).toHaveBeenCalledWith(SIGN_PAGE_URL);
+    expect(mockWindowOpen).toHaveBeenCalledWith(
+      new URL('#privy-sign', window.selector.location).href,
+    );
   });
 
   it('posts SIGN_REQUEST to the popup on READY', async () => {

@@ -17,12 +17,12 @@ import type { FinalExecutionOutcome } from '@near-js/types';
 import type { ChannelMsg, SigningPayload } from '@/types';
 import { LOG_PREFIX } from '@/log';
 
-const SIGN_PAGE_URL = 'http://localhost:5173/#sign';
+const SIGN_PAGE_URL = new URL('#privy-sign', window.selector.location).href;
 
 function requestWallet<T>(payload: SigningPayload): Promise<T> {
   return new Promise((resolve, reject) => {
     // Use the near-connect sandbox API to open the sign page.
-    // Native `window.open()` won't work here because the sandbox
+    // Native `window.open()` won't work the same because the sandbox
     // proxies popup messaging, causing `event.origin` and
     // `event.source` to reflect the sandbox rather than the popup.
     const popup = window.selector.open(SIGN_PAGE_URL);

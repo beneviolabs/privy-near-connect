@@ -15,7 +15,6 @@ declare global {
       providers: { mainnet: string[]; testnet: string[] };
       network: 'testnet' | 'mainnet';
       location: string;
-      manifest?: { signPageUrl?: string };
 
       ready: (wallet: unknown) => void;
       external: (entity: string, key: string, ...args: unknown[]) => Promise<unknown>;
