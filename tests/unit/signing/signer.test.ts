@@ -92,7 +92,9 @@ type MockPrivy = Privy & {
 vi.mock('@/signing/account', async () => {
   const actual = await vi.importActual('@/signing/account');
   // Must use `function`, not an arrow function — vitest v4 requires a constructable implementation.
-  const MockCustomAccount = vi.fn(function () { return mockAccountInstance; });
+  const MockCustomAccount = vi.fn(function () {
+    return mockAccountInstance;
+  });
   return { ...actual, CustomAccount: MockCustomAccount };
 });
 
@@ -136,7 +138,9 @@ describe('buildSignFn()', () => {
       signAndSendTransactions: vi.fn().mockResolvedValue(TEST_TX_RESULTS),
       ncSignDelegateActions: vi.fn().mockResolvedValue(TEST_DELEGATE_RESULT),
     };
-    vi.mocked(CustomAccount).mockImplementation(function () { return mockAccountInstance as never; });
+    vi.mocked(CustomAccount).mockImplementation(function () {
+      return mockAccountInstance as never;
+    });
     mockOpener();
     vi.stubGlobal('close', vi.fn());
   });
