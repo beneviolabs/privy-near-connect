@@ -7,7 +7,7 @@ declare global {
       walletConnect: {
         connect: (params: EngineTypes.ConnectParams) => Promise<SessionTypes.Struct>;
         disconnect: (params: EngineTypes.DisconnectParams) => Promise<void>;
-        request: (params: EngineTypes.RequestParams) => Promise<any>;
+        request: (params: EngineTypes.RequestParams) => Promise<unknown>;
         getSession: () => Promise<SessionTypes.Struct>;
         getProjectId: () => Promise<string>;
       };
@@ -15,12 +15,13 @@ declare global {
       providers: { mainnet: string[]; testnet: string[] };
       network: 'testnet' | 'mainnet';
       location: string;
+      manifest?: { signPageUrl?: string };
 
-      ready: (wallet: any) => void;
-      external: (entity: string, key: string, ...args: any[]) => Promise<any>;
+      ready: (wallet: unknown) => void;
+      external: (entity: string, key: string, ...args: unknown[]) => Promise<unknown>;
 
       parentFrame?: {
-        postMessage: (data: any) => Promise<void>;
+        postMessage: (data: unknown) => Promise<void>;
       };
 
       ui: {
@@ -34,7 +35,7 @@ declare global {
         options?: string,
       ) => {
         close: () => void;
-        postMessage: (message: any) => void;
+        postMessage: (message: unknown) => void;
         windowIdPromise: Promise<string | null>;
         closed: boolean;
       };

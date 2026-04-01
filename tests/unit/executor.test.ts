@@ -47,6 +47,7 @@ beforeAll(async () => {
       wallet = w;
     },
     open: mockWindowOpen,
+    manifest: { signPageUrl: SIGN_PAGE_URL },
   });
 
   await import('@/executor');

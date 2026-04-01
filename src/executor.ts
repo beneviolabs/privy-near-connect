@@ -60,7 +60,7 @@ function requestWallet<T>(payload: SigningPayload): Promise<T> {
 const wallet: NearWalletBase = {
   manifest: {} as WalletManifest,
 
-  async signIn(data?: SignInParams): Promise<Account[]> {
+  async signIn(_data?: SignInParams): Promise<Account[]> {
     return [
       {
         accountId: 'example.near',
