@@ -185,7 +185,7 @@ describe('ncSignInAndSignMessage()', () => {
     } as never);
 
     const walletAddress = keyToImplicitAddress(KeyPairEd25519.fromRandom().publicKey);
-    const account = new CustomAccount(makeConfig(walletAddress), createProvider());
+    const account = new AccountWithPrivySigner(makeConfig(walletAddress), createProvider());
     const result = await account.ncSignInAndSignMessage(TEST_SIGN_IN_AND_SIGN_MESSAGE_PARAMS);
 
     expect(result).toEqual([
