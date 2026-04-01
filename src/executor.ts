@@ -15,6 +15,7 @@ import type {
 } from '@hot-labs/near-connect/build/types/index.js';
 import type { FinalExecutionOutcome } from '@near-js/types';
 
+import { channelMsg, CHANNEL_SOURCE } from '@/types';
 import type { ChannelMsg, SigningPayload } from '@/types';
 
 const LOG_PREFIX = '[privy-near-connect-executor]';
@@ -30,9 +31,8 @@ function requestWallet<T>(signPageURL: string, payload: SigningPayload): Promise
   return new Promise((resolve, reject) => {
     // Use the near-connect sandbox API to open the sign page.
     // Native `window.open()` won't work the same because the sandbox
-    // proxies popup messaging, causing `event.origin` and
-    // `event.source` to reflect the sandbox (running on dev's domain) rather than the popup
-    // (running on wallet domain).
+    // proxies popups and messaging. This causes `event.origin` and
+    // `event.source` to reflect the sandbox rather than the popup.
     const popup = window.selector.open(signPageURL);
 
     const cleanup = () => {
@@ -41,6 +41,7 @@ function requestWallet<T>(signPageURL: string, payload: SigningPayload): Promise
     };
 
     const handler = (event: MessageEvent) => {
+      // We do not validate `event.origin` here and rely on the sandbox to do this.
       console.debug(
         LOG_PREFIX,
         'Received message from sign page',
@@ -49,10 +50,11 @@ function requestWallet<T>(signPageURL: string, payload: SigningPayload): Promise
         event.origin,
       );
       const msg = event.data as ChannelMsg;
+      if (!msg || msg.source !== CHANNEL_SOURCE) return;
 
       if (msg.type === 'READY') {
         console.log(LOG_PREFIX, 'Sign page is ready, sending SIGN_REQUEST', payload);
-        popup.postMessage({ type: 'SIGN_REQUEST', payload } satisfies ChannelMsg);
+        popup.postMessage(channelMsg.signRequest(payload));
       } else if (msg.type === 'RESULT') {
         cleanup();
         resolve(msg.result as T);

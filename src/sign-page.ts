@@ -2,13 +2,15 @@ import type Privy from '@privy-io/js-sdk-core';
 
 import { NoOpenerError, TimeoutError, WildcardOriginError } from '@/sign-page.errors';
 import { buildSignFn } from '@/signing/signer';
+import { channelMsg, CHANNEL_SOURCE } from '@/types';
 import type { ChannelMsg, SignPageOptions, SignPageSession, SigningPayload } from '@/types';
 import { LOG_PREFIX } from '@/log';
 
+export { channelMsg } from '@/types';
 export type { SignPageOptions, SignPageSession } from '@/types';
 
 const DEFAULT_SIGN_REQUEST_TIMEOUT_MS = 30_000;
-const READY_MESSAGE = { type: 'READY' } as const satisfies ChannelMsg;
+const READY_MESSAGE = channelMsg.ready();
 let cleanupMountedIframe: (() => void) | undefined;
 
 function mountPrivyIframe(privy: Privy): Promise<() => void> {
@@ -90,7 +92,7 @@ function waitForOpenerSignRequest(
         return;
       }
       const msg = event.data as ChannelMsg;
-      if (!msg || msg.type !== 'SIGN_REQUEST') {
+      if (!msg || msg.source !== CHANNEL_SOURCE || msg.type !== 'SIGN_REQUEST') {
         console.debug(LOG_PREFIX, '✗ Ignoring non-SIGN_REQUEST message', msg);
         return;
       }

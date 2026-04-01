@@ -16,7 +16,7 @@ import {
 } from '@/signing/errors';
 import { buildSignFn, type PrivyNearWallet } from '@/signing/signer';
 import { AccountWithPrivySigner } from '@/signing/account';
-import type { SigningPayload } from '@/types';
+import { channelMsg, type SigningPayload } from '@/types';
 
 const OPENER_ORIGIN = 'https://app.example.com';
 const TEST_TARGET = OPENER_ORIGIN;
@@ -191,10 +191,7 @@ describe('buildSignFn()', () => {
     await sign();
 
     expect(mockAccountInstance.ncSignMessage).toHaveBeenCalledWith(TEST_PAYLOAD);
-    expect(opener.postMessage).toHaveBeenCalledWith(
-      { type: 'RESULT', result: TEST_RESULT },
-      TEST_TARGET,
-    );
+    expect(opener.postMessage).toHaveBeenCalledWith(channelMsg.result(TEST_RESULT), TEST_TARGET);
     expect(window.close).toHaveBeenCalled();
   });
 
@@ -228,10 +225,7 @@ describe('buildSignFn()', () => {
     await sign();
 
     expect(mockAccountInstance.signAndSendTransaction).toHaveBeenCalled();
-    expect(opener.postMessage).toHaveBeenCalledWith(
-      { type: 'RESULT', result: TEST_TX_RESULT },
-      TEST_TARGET,
-    );
+    expect(opener.postMessage).toHaveBeenCalledWith(channelMsg.result(TEST_TX_RESULT), TEST_TARGET);
     expect(window.close).toHaveBeenCalled();
   });
 
@@ -278,7 +272,7 @@ describe('buildSignFn()', () => {
 
     expect(mockAccountInstance.signAndSendTransactions).toHaveBeenCalledTimes(1);
     expect(opener.postMessage).toHaveBeenCalledWith(
-      { type: 'RESULT', result: TEST_TX_RESULTS },
+      channelMsg.result(TEST_TX_RESULTS),
       TEST_TARGET,
     );
   });
@@ -291,7 +285,7 @@ describe('buildSignFn()', () => {
 
     expect(mockAccountInstance.ncSignDelegateActions).toHaveBeenCalledWith(TEST_DELEGATE_PAYLOAD);
     expect(opener.postMessage).toHaveBeenCalledWith(
-      { type: 'RESULT', result: TEST_DELEGATE_RESULT },
+      channelMsg.result(TEST_DELEGATE_RESULT),
       TEST_TARGET,
     );
     expect(window.close).toHaveBeenCalled();

@@ -2,9 +2,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type Privy from '@privy-io/js-sdk-core';
 import type { SigningPayload } from '@/types';
+import { channelMsg } from '@/types';
 
 import { NoOpenerError, TimeoutError, WildcardOriginError } from '@/sign-page.errors';
 import { initSigningPage } from '@/sign-page';
+import { buildSignFn } from '@/signing/signer';
+
+vi.mock('@/signing/signer', () => ({
+  buildSignFn: vi.fn().mockReturnValue(vi.fn()),
+}));
 
 // ---------- helpers ----------
 
@@ -41,7 +47,10 @@ async function flushPrivyIframeLoad() {
 
 function dispatchSignRequest(payload = TEST_PAYLOAD, origin = OPENER_ORIGIN) {
   window.dispatchEvent(
-    new MessageEvent('message', { origin, data: { type: 'SIGN_REQUEST', payload } }),
+    new MessageEvent('message', {
+      origin,
+      data: channelMsg.signRequest(payload),
+    }),
   );
 }
 
@@ -58,6 +67,7 @@ describe('initSigningPage()', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.useRealTimers();
+    vi.clearAllMocks();
     document.querySelectorAll('iframe[data-privy-embed]').forEach((el) => el.remove());
   });
 
@@ -91,7 +101,7 @@ describe('initSigningPage()', () => {
       const promise = initSigningPage(mockPrivy());
 
       await flushPrivyIframeLoad();
-      expect(opener.postMessage).toHaveBeenCalledWith({ type: 'READY' }, '*');
+      expect(opener.postMessage).toHaveBeenCalledWith(channelMsg.ready(), '*');
 
       vi.runAllTimers();
       await expect(promise).rejects.toBeInstanceOf(TimeoutError);
@@ -105,7 +115,7 @@ describe('initSigningPage()', () => {
       });
 
       await flushPrivyIframeLoad();
-      expect(opener.postMessage).toHaveBeenCalledWith({ type: 'READY' }, '*');
+      expect(opener.postMessage).toHaveBeenCalledWith(channelMsg.ready(), '*');
 
       vi.runAllTimers();
       await expect(promise).rejects.toBeInstanceOf(TimeoutError);
@@ -140,7 +150,7 @@ describe('initSigningPage()', () => {
   });
 
   describe('SIGN_REQUEST handling', () => {
-    it('resolves with the payload when SIGN_REQUEST arrives from the correct origin', async () => {
+    it('resolves with the payload when SIGN_REQUEST arrives', async () => {
       mockOpener();
       const promise = initSigningPage(mockPrivy());
       await flushPrivyIframeLoad();
@@ -203,6 +213,44 @@ describe('initSigningPage()', () => {
 
       await expect(promise).rejects.toBeInstanceOf(TimeoutError);
       expect(document.querySelector('iframe[data-privy-embed]')).not.toBeNull();
+    });
+
+    it('ignores a second SIGN_REQUEST sent after the first was accepted', async () => {
+      mockOpener();
+      const promise = initSigningPage(mockPrivy());
+      await flushPrivyIframeLoad();
+
+      const secondPayload: SigningPayload = {
+        kind: 'signMessage',
+        message: 'evil',
+        recipient: 'attacker.near',
+        nonce: new Uint8Array(32),
+      };
+
+      dispatchSignRequest(TEST_PAYLOAD);
+      dispatchSignRequest(secondPayload); // listener already removed — ignored
+
+      const session = await promise;
+      expect(session.payload).toEqual(TEST_PAYLOAD);
+    });
+
+    it('locks targetOrigin to the first SIGN_REQUEST sender — later senders cannot hijack it', async () => {
+      mockOpener();
+      const promise = initSigningPage(mockPrivy());
+      await flushPrivyIframeLoad();
+
+      dispatchSignRequest(TEST_PAYLOAD, OPENER_ORIGIN);
+      dispatchSignRequest(TEST_PAYLOAD, 'https://evil.com'); // ignored
+
+      await promise;
+
+      expect(vi.mocked(buildSignFn)).toHaveBeenCalledWith(
+        OPENER_ORIGIN,
+        expect.anything(),
+        TEST_PAYLOAD,
+        undefined,
+        undefined,
+      );
     });
   });
 });
