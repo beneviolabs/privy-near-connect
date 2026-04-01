@@ -287,7 +287,7 @@ export default function App() {
             }}
           >
             <img src="https://peerfolio.app/favicon-32x32.png" width={16} height={16} alt="" />
-            Peerfolio
+            Built by Peerfolio
           </a>
         </footer>
       </main>
