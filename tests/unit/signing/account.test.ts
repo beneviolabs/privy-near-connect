@@ -5,7 +5,12 @@ import type Privy from '@privy-io/js-sdk-core';
 import type { SignInAndSignMessageParams, SignMessageParams } from '@hot-labs/near-connect';
 import { KeyPairEd25519, keyToImplicitAddress } from '@near-js/crypto';
 
-import { CustomAccount, PrivySigner, createProvider, type PrivyConfig } from '@/signing/account';
+import {
+  AccountWithPrivySigner,
+  PrivySigner,
+  createProvider,
+  type PrivyConfig,
+} from '@/signing/account';
 import type { PrivyNearWallet } from '@/signing/signer';
 import { publicKeyFromImplicit } from '@/signing/utils';
 
@@ -93,7 +98,7 @@ describe('ncSignMessage()', () => {
     } as never);
 
     const walletAddress = keyToImplicitAddress(KeyPairEd25519.fromRandom().publicKey);
-    const account = new CustomAccount(makeConfig(walletAddress), createProvider());
+    const account = new AccountWithPrivySigner(makeConfig(walletAddress), createProvider());
     await account.ncSignMessage(TEST_MESSAGE_PARAMS);
 
     const [, , input] = vi.mocked(rawSign).mock.calls[0]!;
@@ -107,7 +112,7 @@ describe('ncSignMessage()', () => {
     } as never);
 
     const walletAddress = keyToImplicitAddress(KeyPairEd25519.fromRandom().publicKey);
-    const account = new CustomAccount(makeConfig(walletAddress), createProvider());
+    const account = new AccountWithPrivySigner(makeConfig(walletAddress), createProvider());
     const result = await account.ncSignMessage(TEST_MESSAGE_PARAMS);
 
     expect(result).toEqual({
@@ -119,7 +124,7 @@ describe('ncSignMessage()', () => {
 
   it('propagates rawSign errors', async () => {
     vi.mocked(rawSign).mockRejectedValue(new Error('rawSign failed'));
-    const account = new CustomAccount(makeConfig(), createProvider());
+    const account = new AccountWithPrivySigner(makeConfig(), createProvider());
 
     await expect(account.ncSignMessage(TEST_MESSAGE_PARAMS)).rejects.toThrow('rawSign failed');
   });
@@ -127,7 +132,7 @@ describe('ncSignMessage()', () => {
 
 describe('ncSignIn()', () => {
   it('returns the implicit account info for the configured wallet', async () => {
-    const account = new CustomAccount(makeConfig(), createProvider());
+    const account = new AccountWithPrivySigner(makeConfig(), createProvider());
     const result = await account.ncSignIn();
 
     expect(result).toEqual([
@@ -140,9 +145,9 @@ describe('ncSignIn()', () => {
 
   it('adds a function-call access key before returning when addFunctionCallKey is provided', async () => {
     const addKey = vi
-      .spyOn(CustomAccount.prototype, 'addFunctionCallAccessKey')
+      .spyOn(AccountWithPrivySigner.prototype, 'addFunctionCallAccessKey')
       .mockResolvedValue({} as never);
-    const account = new CustomAccount(makeConfig(), createProvider());
+    const account = new AccountWithPrivySigner(makeConfig(), createProvider());
 
     const result = await account.ncSignIn({
       addFunctionCallKey: {
@@ -199,7 +204,7 @@ describe('ncSignInAndSignMessage()', () => {
 
 describe('signOut()', () => {
   it('resolves with void (no-op)', async () => {
-    const account = new CustomAccount(makeConfig(), createProvider());
+    const account = new AccountWithPrivySigner(makeConfig(), createProvider());
     await expect(account.signOut()).resolves.toBeUndefined();
   });
 });

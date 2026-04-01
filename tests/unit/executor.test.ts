@@ -104,7 +104,7 @@ describe('requestWallet', () => {
   it('opens the sign page popup', () => {
     wallet.signMessage(PARAMS).catch(() => {});
     expect(mockWindowOpen).toHaveBeenCalledWith(
-      new URL('#privy-sign', window.selector.location).href,
+      new URL('#privy-sign', 'http://localhost:5173').href,
     );
   });
 
@@ -141,7 +141,7 @@ describe('requestWallet', () => {
     const promise = wallet.signMessage(PARAMS);
     popup.close();
     vi.advanceTimersByTime(300);
-    await expect(promise).rejects.toThrow('Sign page closed');
+    await expect(promise).rejects.toThrow('Privy Sign window closed');
   });
 
   it('ignores unrecognised message types', async () => {

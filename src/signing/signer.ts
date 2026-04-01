@@ -6,7 +6,7 @@ import {
   UnsupportedSigningPayloadError,
   WindowOpenerClosedError,
 } from '@/signing/errors';
-import { createProvider, CustomAccount } from '@/signing/account';
+import { createProvider, AccountWithPrivySigner } from '@/signing/account';
 import type { PrivyConfig, RpcOptions } from '@/signing/account';
 import type { ChannelMsg, SigningPayload, SigningResult } from '@/types';
 import { LOG_PREFIX } from '@/log';
@@ -84,7 +84,7 @@ export function buildSignFn(
       wallet: walletToUse,
     };
     const network = 'network' in payload ? payload.network : undefined;
-    const account = new CustomAccount(walletConfig, createProvider(network, rpcOptions));
+    const account = new AccountWithPrivySigner(walletConfig, createProvider(network, rpcOptions));
 
     let result: SigningResult;
     switch (payload.kind) {
