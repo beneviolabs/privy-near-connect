@@ -42,6 +42,9 @@ function requestWallet<T>(signPageURL: string, payload: SigningPayload): Promise
 
     const handler = (event: MessageEvent) => {
       // We do not validate `event.origin` here and rely on the sandbox to do this.
+      const msg = event.data as ChannelMsg;
+
+      if (!msg || msg.source !== CHANNEL_SOURCE) return;
       console.debug(
         LOG_PREFIX,
         'Received message from sign page',
@@ -49,8 +52,6 @@ function requestWallet<T>(signPageURL: string, payload: SigningPayload): Promise
         'origin:',
         event.origin,
       );
-      const msg = event.data as ChannelMsg;
-      if (!msg || msg.source !== CHANNEL_SOURCE) return;
 
       if (msg.type === 'READY') {
         console.log(LOG_PREFIX, 'Sign page is ready, sending SIGN_REQUEST', payload);
@@ -160,10 +161,10 @@ const wallet: NearWalletBase & { manifest: WalletManifestwithMetadata } = {
   },
 };
 
-const SIGN_PAGE_URL = new URL('#privy-sign', 'http://localhost:5173').href;
-wallet.manifest = {
-  metadata: {
-    signPageURL: SIGN_PAGE_URL,
-  },
-} as WalletManifestwithMetadata;
+// const SIGN_PAGE_URL = new URL('#privy-sign', 'http://localhost:5173').href;
+// wallet.manifest = {
+//   metadata: {
+//     signPageURL: SIGN_PAGE_URL,
+//   },
+// } as WalletManifestwithMetadata;
 window.selector.ready(wallet);

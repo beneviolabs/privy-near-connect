@@ -29,6 +29,9 @@
           "https://beneviolabs.github.io/privy-near-connect",
           "http://localhost:5173"
         ]
+      },
+      "metadata": {
+        "signPageURL": "http://localhost:5173/#privy-sign"
       }
     },
     {
