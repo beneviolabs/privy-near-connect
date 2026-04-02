@@ -64,6 +64,7 @@ export type SigningResult =
 /** Identifies all messages originating from this library. */
 export const CHANNEL_SOURCE = 'privy-near-connect' as const;
 
+/** Union of all message types exchanged between the executor and the sign page. */
 export type ChannelMsg = { source: typeof CHANNEL_SOURCE } & (
   | { type: 'READY' }
   | { type: 'SIGN_REQUEST'; payload: SigningPayload }
@@ -73,21 +74,36 @@ export type ChannelMsg = { source: typeof CHANNEL_SOURCE } & (
 
 /** Constructors for {@link ChannelMsg} variants. Each stamps `source` automatically. */
 export const channelMsg = {
-  /** @returns A `READY` message. */
+  /**
+   * Builds a `READY` message.
+   * @returns A `READY` message.
+   */
   ready: (): ChannelMsg => ({ source: CHANNEL_SOURCE, type: 'READY' }),
-  /** @param payload - Signing payload. @returns A `SIGN_REQUEST` message. */
+  /**
+   * Builds a `SIGN_REQUEST` message.
+   * @param payload - Signing payload.
+   * @returns A `SIGN_REQUEST` message.
+   */
   signRequest: (payload: SigningPayload): ChannelMsg => ({
     source: CHANNEL_SOURCE,
     type: 'SIGN_REQUEST',
     payload,
   }),
-  /** @param result - Signing result. @returns A `RESULT` message. */
+  /**
+   * Builds a `RESULT` message.
+   * @param result - Signing result.
+   * @returns A `RESULT` message.
+   */
   result: (result: SigningResult): ChannelMsg => ({
     source: CHANNEL_SOURCE,
     type: 'RESULT',
     result,
   }),
-  /** @param message - Human-readable error description. @returns An `ERROR` message. */
+  /**
+   * Builds an `ERROR` message.
+   * @param message - Human-readable error description.
+   * @returns An `ERROR` message.
+   */
   error: (message: string): ChannelMsg => ({
     source: CHANNEL_SOURCE,
     type: 'ERROR',
