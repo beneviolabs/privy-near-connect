@@ -1,0 +1,50 @@
+name: Build and publish executor.js to build branch
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 25
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Publish executor.js to build branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          cp dist/executor.js /tmp/executor.js
+
+          git fetch origin
+
+          if git ls-remote --exit-code origin build > /dev/null 2>&1; then
+            git checkout -B build origin/build
+          else
+            git checkout --orphan build
+            git rm -rf . --quiet
+          fi
+
+          cp /tmp/executor.js executor.js
+          git add executor.js
+          git diff --staged --quiet || git commit -m "chore: update built executor.js [skip ci]"
+          git push origin build
