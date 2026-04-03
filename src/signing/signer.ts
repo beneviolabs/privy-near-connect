@@ -84,13 +84,17 @@ export function buildSignFn(
       privyClient: privy,
       wallet: walletToUse,
     };
-    const account = new AccountWithPrivySigner(
-      walletConfig,
-      createProvider(payload.network, rpcOptions),
-    );
+    const network = 'network' in payload ? payload.network : undefined;
+    const account = new AccountWithPrivySigner(walletConfig, createProvider(network, rpcOptions));
 
     let result: SigningResult;
     switch (payload.kind) {
+      case 'signIn':
+        result = await account.ncSignIn(payload);
+        break;
+      case 'signInAndSignMessage':
+        result = await account.ncSignInAndSignMessage(payload);
+        break;
       case 'signMessage':
         result = await account.ncSignMessage(payload);
         break;

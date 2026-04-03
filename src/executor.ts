@@ -2,6 +2,7 @@ import type {
   NearWalletBase,
   WalletManifest,
   Account,
+  Network,
   AccountWithSignedMessage,
   SignInParams,
   SignInAndSignMessageParams,
@@ -16,8 +17,10 @@ import type { FinalExecutionOutcome } from '@near-js/types';
 
 import { channelMsg, CHANNEL_SOURCE } from '@/types';
 import type { ChannelMsg, SigningPayload } from '@/types';
-import { LOG_PREFIX } from '@/log';
 
+const LOG_PREFIX = '[privy-near-connect-executor]';
+
+const ACCOUNT_ID_STORAGE_KEY = 'privy-near-connect:account-id';
 type WalletManifestwithMetadata = WalletManifest & {
   metadata: {
     signPageURL: string;
@@ -39,6 +42,9 @@ function requestWallet<T>(signPageURL: string, payload: SigningPayload): Promise
 
     const handler = (event: MessageEvent) => {
       // We do not validate `event.origin` here and rely on the sandbox to do this.
+      const msg = event.data as ChannelMsg;
+
+      if (!msg || msg.source !== CHANNEL_SOURCE) return;
       console.debug(
         LOG_PREFIX,
         'Received message from sign page',
@@ -46,8 +52,6 @@ function requestWallet<T>(signPageURL: string, payload: SigningPayload): Promise
         'origin:',
         event.origin,
       );
-      const msg = event.data as ChannelMsg;
-      if (!msg || msg.source !== CHANNEL_SOURCE) return;
 
       if (msg.type === 'READY') {
         console.log(LOG_PREFIX, 'Sign page is ready, sending SIGN_REQUEST', payload);
@@ -75,32 +79,52 @@ function requestWallet<T>(signPageURL: string, payload: SigningPayload): Promise
 const wallet: NearWalletBase & { manifest: WalletManifestwithMetadata } = {
   manifest: {} as WalletManifestwithMetadata,
 
-  async signIn(_data?: SignInParams): Promise<Account[]> {
-    return [
-      {
-        accountId: 'example.near',
-        publicKey: '',
-      },
-    ];
+  async signIn(data?: SignInParams): Promise<Account[]> {
+    const accounts = await requestWallet<Account[]>(this.manifest.metadata.signPageURL, {
+      kind: 'signIn',
+      ...data,
+    });
+    const accountId = accounts[0]?.accountId;
+
+    if (accountId) {
+      await window.selector.storage.set(ACCOUNT_ID_STORAGE_KEY, accountId);
+    }
+
+    return accounts;
   },
 
   async signInAndSignMessage(
-    _data: SignInAndSignMessageParams,
+    data: SignInAndSignMessageParams,
   ): Promise<AccountWithSignedMessage[]> {
-    console.log(LOG_PREFIX, 'signInAndSignMessage', _data);
-    return [];
+    const accounts = await requestWallet<AccountWithSignedMessage[]>(
+      this.manifest.metadata.signPageURL,
+      {
+        kind: 'signInAndSignMessage',
+        ...data,
+      },
+    );
+    const accountId = accounts[0]?.accountId;
+
+    if (accountId) {
+      await window.selector.storage.set(ACCOUNT_ID_STORAGE_KEY, accountId);
+    }
+
+    return accounts;
   },
 
   async signOut(_data?: { network?: string }): Promise<void> {
     console.log(LOG_PREFIX, 'signOut');
+    await window.selector.storage.remove(ACCOUNT_ID_STORAGE_KEY);
   },
 
-  async getAccounts(): Promise<Account[]> {
-    console.log(LOG_PREFIX, 'getAccounts');
+  async getAccounts(_data?: { network?: Network }): Promise<Account[]> {
+    const accountId = await window.selector.storage.get(ACCOUNT_ID_STORAGE_KEY);
+
+    if (!accountId) return [];
+
     return [
       {
-        accountId: 'example.near',
-        publicKey: '',
+        accountId,
       },
     ];
   },

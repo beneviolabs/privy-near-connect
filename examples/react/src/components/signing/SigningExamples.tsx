@@ -42,7 +42,7 @@ export function SigningExamples({ network, isLoggedIn }: Props) {
   useEffect(() => {
     const onSignIn = async () => {
       const w = await connector.wallet();
-      const accounts = await w.getAccounts();
+      const accounts = await w.getAccounts({ network });
       setWallet(w);
       setAccountId(accounts[0]?.accountId ?? null);
     };
@@ -56,7 +56,7 @@ export function SigningExamples({ network, isLoggedIn }: Props) {
       connector.off('wallet:signIn', onSignIn);
       connector.off('wallet:signOut', onSignOut);
     };
-  }, []);
+  }, [network]);
 
   useEffect(() => {
     connector.network = network;
