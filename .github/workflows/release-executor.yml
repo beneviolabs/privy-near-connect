@@ -6,10 +6,10 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -28,10 +28,20 @@ jobs:
         env:
           NODE_ENV: production
 
+      - name: Generate deploy token
+        id: deploy-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.DEPLOY_APP_ID }}
+          private-key: ${{ secrets.DEPLOY_APP_PRIVATE_KEY }}
+
       - name: Publish executor.js to release branch
+        env:
+          APP_TOKEN: ${{ steps.deploy-token.outputs.token }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "peerfolio-deploy-bot"
+          git config user.email "peerfolio-deploy-bot@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${APP_TOKEN}@github.com/beneviolabs/privy-near-connect.git
 
           cp dist/executor.js /tmp/executor.js
 
