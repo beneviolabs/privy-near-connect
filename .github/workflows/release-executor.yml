@@ -41,6 +41,9 @@ jobs:
         run: |
           git config user.name "peerfolio-deploy-bot"
           git config user.email "peerfolio-deploy-bot@users.noreply.github.com"
+          # Remove the GITHUB_TOKEN auth header injected by actions/checkout so the
+          # app token embedded in the remote URL is used instead.
+          git config --unset-all "http.https://github.com/.extraheader" || true
           git remote set-url origin https://x-access-token:${APP_TOKEN}@github.com/beneviolabs/privy-near-connect.git
 
           cp dist/executor.js /tmp/executor.js
