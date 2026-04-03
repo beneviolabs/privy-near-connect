@@ -46,7 +46,11 @@ export default function App() {
   const [privy, setPrivy] = useState<Privy | null>(() => {
     const id = import.meta.env.VITE_PRIVY_APP_ID as string | undefined;
     const cId = import.meta.env.VITE_PRIVY_APP_CLIENT_ID as string | undefined;
-    if (id && cId) return makePrivy(id, cId);
+    if (id && cId) {
+      sessionStorage.setItem('privy_app_id', id);
+      sessionStorage.setItem('privy_client_id', cId);
+      return makePrivy(id, cId);
+    }
     return null;
   });
 
@@ -87,15 +91,14 @@ export default function App() {
 
   function handleApply() {
     if (!appId.trim() || !clientId.trim()) return;
+    sessionStorage.setItem('privy_app_id', appId.trim());
+    sessionStorage.setItem('privy_client_id', clientId.trim());
     setPrivy(makePrivy(appId.trim(), clientId.trim()));
     setUser(null);
     setLoginStep('email');
     setEmail('');
     setCode('');
     setLoginError(null);
-    setActionStatus('idle');
-    setActionResult(null);
-    setActionError(null);
   }
 
   async function handleSendCode(e: React.FormEvent) {
@@ -138,9 +141,6 @@ export default function App() {
     setLoginStep('email');
     setCode('');
     setLoginError(null);
-    setActionStatus('idle');
-    setActionResult(null);
-    setActionError(null);
   }
 
   let mainContent: React.ReactNode;
