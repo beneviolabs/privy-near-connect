@@ -58,5 +58,6 @@ jobs:
 
           cp /tmp/executor.js executor.js
           git add executor.js
+          git diff --staged
           git diff --staged --quiet || git commit -m "chore: update built executor.js [skip ci]"
           git push origin release
