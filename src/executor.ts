@@ -161,8 +161,6 @@ const wallet: NearWalletBase & { manifest: WalletManifestwithMetadata } = {
   },
 };
 
-// TESTING 1234567890123
-console.log(LOG_PREFIX, 'Initializing wallet and registering with selectors');
 const SIGN_PAGE_URL = new URL('#privy-sign', 'http://localhost:5173').href;
 wallet.manifest = {
   metadata: {
