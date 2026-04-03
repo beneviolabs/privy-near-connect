@@ -1,0 +1,63 @@
+name: Release executor.js
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 25
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Generate deploy token
+        id: deploy-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.DEPLOY_APP_ID }}
+          private-key: ${{ secrets.DEPLOY_APP_PRIVATE_KEY }}
+
+      - name: Publish executor.js to release branch
+        env:
+          APP_TOKEN: ${{ steps.deploy-token.outputs.token }}
+        run: |
+          git config user.name "peerfolio-deploy-bot"
+          git config user.email "peerfolio-deploy-bot@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${APP_TOKEN}@github.com/beneviolabs/privy-near-connect.git
+
+          cp dist/executor.js /tmp/executor.js
+
+          git fetch origin
+
+          if git ls-remote --exit-code origin release > /dev/null 2>&1; then
+            git checkout -B release origin/release
+          else
+            git checkout --orphan release
+            git rm -rf . --quiet
+          fi
+
+          cp /tmp/executor.js executor.js
+          git add executor.js
+          git diff --staged
+          git diff --staged --quiet || git commit -m "update built executor.js"
+          git push origin release

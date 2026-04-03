@@ -71,6 +71,28 @@ npm run dev
 
 Open the app at http://localhost:5173.
 
+## Deploying executor.js to the `release` branch
+
+The `release` branch serves the compiled `executor.js` directly via GitHub's raw content URL:
+
+```
+https://raw.githubusercontent.com/beneviolabs/privy-near-connect/refs/heads/release/executor.js
+```
+
+The workflow in `.github/workflows/build-executor.yml` runs automatically on every push to `main`. To trigger it manually or set it up for the first time:
+
+1. **Ensure the workflow has write access.** In the repository settings, go to _Settings → Actions → General → Workflow permissions_ and select "Read and write permissions".
+
+2. **Merge to `main`** (or trigger manually via _Actions → Build and publish executor.js to release branch → Run workflow_). The workflow will:
+   - Install dependencies
+   - Build the library with `NODE_ENV=production`
+   - Check out (or create) the `release` branch
+   - Commit `executor.js` to the root of that branch and push
+
+3. **Verify the artifact** is accessible at the raw URL above. It may take a few seconds after the workflow completes for GitHub's CDN to reflect the latest commit.
+
+> The `release` branch is machine-managed. Do not push to it manually — changes will be overwritten on the next workflow run.
+
 ## FAQ and Troubleshooting
 - You can copy the manifest in examples/react app and add it to https://azbang.github.io/near-connect/ to do cross-origin. Make sure it's being served already.
 - If you run into `Uncaught (in promise) Permission denied` error when launching the signing page or elsewhere it most likely is related to window opening so check the origin being specified and cross-origin access.
