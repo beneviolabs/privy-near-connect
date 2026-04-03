@@ -3,16 +3,16 @@
     "target": "ES2020",
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     },
     "lib": ["ES2020", "DOM"],
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "noEmit": true
+    "noEmit": true,
+    "ignoreDeprecations": "6.0"
   },
   "include": ["src", "tests", "tsup.config.ts", "vitest.config.ts"]
 }

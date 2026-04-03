@@ -2,9 +2,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type Privy from '@privy-io/js-sdk-core';
 import type { SigningPayload } from '@/types';
+import { channelMsg } from '@/types';
 
-import { NoOpenerError, TimeoutError } from '@/sign-page.errors';
+import { NoOpenerError, TimeoutError, WildcardOriginError } from '@/sign-page.errors';
 import { initSigningPage } from '@/sign-page';
+import { buildSignFn } from '@/signing/signer';
+
+vi.mock('@/signing/signer', () => ({
+  buildSignFn: vi.fn().mockReturnValue(vi.fn()),
+}));
 
 // ---------- helpers ----------
 
@@ -41,7 +47,10 @@ async function flushPrivyIframeLoad() {
 
 function dispatchSignRequest(payload = TEST_PAYLOAD, origin = OPENER_ORIGIN) {
   window.dispatchEvent(
-    new MessageEvent('message', { origin, data: { type: 'SIGN_REQUEST', payload } }),
+    new MessageEvent('message', {
+      origin,
+      data: channelMsg.signRequest(payload),
+    }),
   );
 }
 
@@ -58,6 +67,7 @@ describe('initSigningPage()', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.useRealTimers();
+    vi.clearAllMocks();
     document.querySelectorAll('iframe[data-privy-embed]').forEach((el) => el.remove());
   });
 
@@ -68,49 +78,44 @@ describe('initSigningPage()', () => {
     });
   });
 
-  describe('origin guard', () => {
-    it('rejects explicit wildcard allowedOrigin', async () => {
+  describe('allowedOrigins guard', () => {
+    it('throws WildcardOriginError when allowedOrigins contains *', async () => {
       mockOpener();
-      await expect(initSigningPage(mockPrivy(), { allowedOrigin: '*' })).rejects.toThrow();
+      await expect(initSigningPage(mockPrivy(), { allowedOrigins: ['*'] })).rejects.toBeInstanceOf(
+        WildcardOriginError,
+      );
+    });
+
+    it('throws WildcardOriginError when * is mixed with valid origins', async () => {
+      mockOpener();
+      await expect(
+        initSigningPage(mockPrivy(), { allowedOrigins: ['https://app.example.com', '*'] }),
+      ).rejects.toBeInstanceOf(WildcardOriginError);
     });
   });
 
   describe('READY handshake', () => {
-    it('posts READY to opener using opener.location.origin as target', async () => {
+    it('posts READY to opener with wildcard target', async () => {
       vi.useFakeTimers();
       const opener = mockOpener();
       const promise = initSigningPage(mockPrivy());
 
       await flushPrivyIframeLoad();
-      expect(opener.postMessage).toHaveBeenCalledWith({ type: 'READY' }, OPENER_ORIGIN);
+      expect(opener.postMessage).toHaveBeenCalledWith(channelMsg.ready(), '*');
 
       vi.runAllTimers();
       await expect(promise).rejects.toBeInstanceOf(TimeoutError);
     });
 
-    it('rejects when allowedOrigin is omitted and opener origin is not readable', async () => {
-      vi.stubGlobal('opener', {
-        postMessage: vi.fn(),
-        get location() {
-          throw new DOMException(
-            'Blocked a frame with origin from accessing a cross-origin frame.',
-          );
-        },
-      });
-
-      await expect(initSigningPage(mockPrivy())).rejects.toThrow(
-        'A specific target origin is required; wildcard origins are not allowed',
-      );
-    });
-
-    it('uses allowedOrigin as postMessage target when provided', async () => {
+    it('posts READY with wildcard target even when allowedOrigins is provided', async () => {
       vi.useFakeTimers();
       const opener = mockOpener();
-      const allowed = 'https://custom.example.com';
-      const promise = initSigningPage(mockPrivy(), { allowedOrigin: allowed });
+      const promise = initSigningPage(mockPrivy(), {
+        allowedOrigins: ['https://custom.example.com'],
+      });
 
       await flushPrivyIframeLoad();
-      expect(opener.postMessage).toHaveBeenCalledWith({ type: 'READY' }, allowed);
+      expect(opener.postMessage).toHaveBeenCalledWith(channelMsg.ready(), '*');
 
       vi.runAllTimers();
       await expect(promise).rejects.toBeInstanceOf(TimeoutError);
@@ -145,7 +150,7 @@ describe('initSigningPage()', () => {
   });
 
   describe('SIGN_REQUEST handling', () => {
-    it('resolves with the payload when SIGN_REQUEST arrives from the correct origin', async () => {
+    it('resolves with the payload when SIGN_REQUEST arrives', async () => {
       mockOpener();
       const promise = initSigningPage(mockPrivy());
       await flushPrivyIframeLoad();
@@ -156,10 +161,23 @@ describe('initSigningPage()', () => {
       expect(session.sign).toEqual(expect.any(Function));
     });
 
-    it('ignores messages from an unexpected origin', async () => {
+    it('accepts SIGN_REQUEST from any origin when allowedOrigins is not configured', async () => {
+      mockOpener();
+      const promise = initSigningPage(mockPrivy());
+      await flushPrivyIframeLoad();
+      dispatchSignRequest(TEST_PAYLOAD, 'https://any-origin.example.com');
+
+      const session = await promise;
+      expect(session.payload).toEqual(TEST_PAYLOAD);
+    });
+
+    it('ignores messages from origins not in allowedOrigins', async () => {
       mockOpener();
       vi.useFakeTimers();
-      const promise = initSigningPage(mockPrivy(), { timeout: 1000 });
+      const promise = initSigningPage(mockPrivy(), {
+        allowedOrigins: [OPENER_ORIGIN],
+        timeout: 1000,
+      });
 
       await flushPrivyIframeLoad();
       dispatchSignRequest(TEST_PAYLOAD, 'https://evil.com');
@@ -195,6 +213,44 @@ describe('initSigningPage()', () => {
 
       await expect(promise).rejects.toBeInstanceOf(TimeoutError);
       expect(document.querySelector('iframe[data-privy-embed]')).not.toBeNull();
+    });
+
+    it('ignores a second SIGN_REQUEST sent after the first was accepted', async () => {
+      mockOpener();
+      const promise = initSigningPage(mockPrivy());
+      await flushPrivyIframeLoad();
+
+      const secondPayload: SigningPayload = {
+        kind: 'signMessage',
+        message: 'evil',
+        recipient: 'attacker.near',
+        nonce: new Uint8Array(32),
+      };
+
+      dispatchSignRequest(TEST_PAYLOAD);
+      dispatchSignRequest(secondPayload); // listener already removed — ignored
+
+      const session = await promise;
+      expect(session.payload).toEqual(TEST_PAYLOAD);
+    });
+
+    it('locks targetOrigin to the first SIGN_REQUEST sender — later senders cannot hijack it', async () => {
+      mockOpener();
+      const promise = initSigningPage(mockPrivy());
+      await flushPrivyIframeLoad();
+
+      dispatchSignRequest(TEST_PAYLOAD, OPENER_ORIGIN);
+      dispatchSignRequest(TEST_PAYLOAD, 'https://evil.com'); // ignored
+
+      await promise;
+
+      expect(vi.mocked(buildSignFn)).toHaveBeenCalledWith(
+        OPENER_ORIGIN,
+        expect.anything(),
+        TEST_PAYLOAD,
+        undefined,
+        undefined,
+      );
     });
   });
 });

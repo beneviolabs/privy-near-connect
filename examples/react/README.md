@@ -2,11 +2,11 @@
 
 This example provides a simple signing UI wired to the local library build.
 
-Run the library in watch mode from the repo root so changes propagate:
+Run the library in continuous build and serve mode:
 
 ```bash
 npm install
-npm run build:watch
+npm run build-serve:watch
 ```
 
 Then start the React app:
@@ -23,4 +23,4 @@ Open the app at http://localhost:5173.
 
 - Create `examples/react/.env` with `VITE_PRIVY_APP_ID` and `VITE_PRIVY_APP_CLIENT_ID`.
 - Add `http://localhost:5173` to the allowed origins for your Privy app.
-- The flow opens a popup at `/#sign`, so allow popups locally while testing.
+- The flow opens a popup at `/#privy-sign`, so allow popups locally while testing.

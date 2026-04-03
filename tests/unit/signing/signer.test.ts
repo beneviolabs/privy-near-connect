@@ -4,6 +4,8 @@ import type Privy from '@privy-io/js-sdk-core';
 import type { FinalExecutionOutcome } from '@near-js/types';
 
 import type {
+  Account,
+  AccountWithSignedMessage,
   SignedMessage,
   SignDelegateActionsResponse,
 } from '@hot-labs/near-connect/build/types/index.js';
@@ -13,7 +15,8 @@ import {
   WindowOpenerClosedError,
 } from '@/signing/errors';
 import { buildSignFn, type PrivyNearWallet } from '@/signing/signer';
-import type { SigningPayload } from '@/types';
+import { AccountWithPrivySigner } from '@/signing/account';
+import { channelMsg, type SigningPayload } from '@/types';
 
 const OPENER_ORIGIN = 'https://app.example.com';
 const TEST_TARGET = OPENER_ORIGIN;
@@ -38,6 +41,34 @@ const TEST_RESULT: SignedMessage = {
   accountId: TEST_WALLET_ADDRESS,
   publicKey: 'ed25519:11111111111111111111111111111111',
   signature: 'AQID',
+};
+
+const TEST_ACCOUNTS_RESULT: Account[] = [
+  {
+    accountId: TEST_WALLET_ADDRESS,
+    publicKey: 'ed25519:11111111111111111111111111111111',
+  },
+];
+
+const TEST_SIGN_IN_PAYLOAD: SigningPayload = {
+  kind: 'signIn',
+};
+
+const TEST_SIGN_IN_AND_SIGN_MESSAGE_RESULT: AccountWithSignedMessage[] = [
+  {
+    accountId: TEST_WALLET_ADDRESS,
+    publicKey: 'ed25519:11111111111111111111111111111111',
+    signedMessage: TEST_RESULT,
+  },
+];
+
+const TEST_SIGN_IN_AND_SIGN_MESSAGE_PAYLOAD: SigningPayload = {
+  kind: 'signInAndSignMessage',
+  messageParams: {
+    message: 'hello',
+    recipient: 'bob.near',
+    nonce: new Uint8Array(32),
+  },
 };
 
 const TEST_TX_PAYLOAD: SigningPayload = {
@@ -78,6 +109,8 @@ const TEST_TX_RESULT = {
 const TEST_TX_RESULTS = [TEST_TX_RESULT, TEST_TX_RESULT] as FinalExecutionOutcome[];
 
 let mockAccountInstance: {
+  ncSignIn: ReturnType<typeof vi.fn>;
+  ncSignInAndSignMessage: ReturnType<typeof vi.fn>;
   ncSignMessage: ReturnType<typeof vi.fn>;
   signAndSendTransaction: ReturnType<typeof vi.fn>;
   signAndSendTransactions: ReturnType<typeof vi.fn>;
@@ -90,8 +123,11 @@ type MockPrivy = Privy & {
 
 vi.mock('@/signing/account', async () => {
   const actual = await vi.importActual('@/signing/account');
-  const MockCustomAccount = vi.fn().mockImplementation(() => mockAccountInstance);
-  return { ...actual, CustomAccount: MockCustomAccount };
+  // Must use `function`, not an arrow function — vitest v4 requires a constructable implementation.
+  const MockAccountWithPrivySigner = vi.fn(function () {
+    return mockAccountInstance;
+  });
+  return { ...actual, AccountWithPrivySigner: MockAccountWithPrivySigner };
 });
 
 function mockOpener() {
@@ -129,11 +165,16 @@ function mockPrivy(): MockPrivy {
 describe('buildSignFn()', () => {
   beforeEach(() => {
     mockAccountInstance = {
+      ncSignIn: vi.fn().mockResolvedValue(TEST_ACCOUNTS_RESULT),
+      ncSignInAndSignMessage: vi.fn().mockResolvedValue(TEST_SIGN_IN_AND_SIGN_MESSAGE_RESULT),
       ncSignMessage: vi.fn().mockResolvedValue(TEST_RESULT),
       signAndSendTransaction: vi.fn().mockResolvedValue(TEST_TX_RESULT),
       signAndSendTransactions: vi.fn().mockResolvedValue(TEST_TX_RESULTS),
       ncSignDelegateActions: vi.fn().mockResolvedValue(TEST_DELEGATE_RESULT),
     };
+    vi.mocked(AccountWithPrivySigner).mockImplementation(function () {
+      return mockAccountInstance as never;
+    });
     mockOpener();
     vi.stubGlobal('close', vi.fn());
   });
@@ -150,10 +191,7 @@ describe('buildSignFn()', () => {
     await sign();
 
     expect(mockAccountInstance.ncSignMessage).toHaveBeenCalledWith(TEST_PAYLOAD);
-    expect(opener.postMessage).toHaveBeenCalledWith(
-      { type: 'RESULT', result: TEST_RESULT },
-      TEST_TARGET,
-    );
+    expect(opener.postMessage).toHaveBeenCalledWith(channelMsg.result(TEST_RESULT), TEST_TARGET);
     expect(window.close).toHaveBeenCalled();
   });
 
@@ -187,8 +225,40 @@ describe('buildSignFn()', () => {
     await sign();
 
     expect(mockAccountInstance.signAndSendTransaction).toHaveBeenCalled();
+    expect(opener.postMessage).toHaveBeenCalledWith(channelMsg.result(TEST_TX_RESULT), TEST_TARGET);
+    expect(window.close).toHaveBeenCalled();
+  });
+
+  it('routes signIn payload to account.ncSignIn and posts RESULT', async () => {
+    const opener = mockOpener();
+    const sign = buildSignFn(TEST_TARGET, mockPrivy(), TEST_SIGN_IN_PAYLOAD, TEST_WALLET);
+
+    await sign();
+
+    expect(mockAccountInstance.ncSignIn).toHaveBeenCalledWith(TEST_SIGN_IN_PAYLOAD);
     expect(opener.postMessage).toHaveBeenCalledWith(
-      { type: 'RESULT', result: TEST_TX_RESULT },
+      channelMsg.result(TEST_ACCOUNTS_RESULT),
+      TEST_TARGET,
+    );
+    expect(window.close).toHaveBeenCalled();
+  });
+
+  it('routes signInAndSignMessage payload to account.ncSignInAndSignMessage and posts RESULT', async () => {
+    const opener = mockOpener();
+    const sign = buildSignFn(
+      TEST_TARGET,
+      mockPrivy(),
+      TEST_SIGN_IN_AND_SIGN_MESSAGE_PAYLOAD,
+      TEST_WALLET,
+    );
+
+    await sign();
+
+    expect(mockAccountInstance.ncSignInAndSignMessage).toHaveBeenCalledWith(
+      TEST_SIGN_IN_AND_SIGN_MESSAGE_PAYLOAD,
+    );
+    expect(opener.postMessage).toHaveBeenCalledWith(
+      channelMsg.result(TEST_SIGN_IN_AND_SIGN_MESSAGE_RESULT),
       TEST_TARGET,
     );
     expect(window.close).toHaveBeenCalled();
@@ -202,7 +272,7 @@ describe('buildSignFn()', () => {
 
     expect(mockAccountInstance.signAndSendTransactions).toHaveBeenCalledTimes(1);
     expect(opener.postMessage).toHaveBeenCalledWith(
-      { type: 'RESULT', result: TEST_TX_RESULTS },
+      channelMsg.result(TEST_TX_RESULTS),
       TEST_TARGET,
     );
   });
@@ -215,7 +285,7 @@ describe('buildSignFn()', () => {
 
     expect(mockAccountInstance.ncSignDelegateActions).toHaveBeenCalledWith(TEST_DELEGATE_PAYLOAD);
     expect(opener.postMessage).toHaveBeenCalledWith(
-      { type: 'RESULT', result: TEST_DELEGATE_RESULT },
+      channelMsg.result(TEST_DELEGATE_RESULT),
       TEST_TARGET,
     );
     expect(window.close).toHaveBeenCalled();

@@ -2,6 +2,7 @@ import { rawSign } from '@privy-io/js-sdk-core';
 import { toHex } from 'viem';
 import type Privy from '@privy-io/js-sdk-core';
 import type {
+  SignInAndSignMessageParams,
   SignAndSendTransactionParams,
   SignAndSendTransactionsParams,
   SignDelegateActionsParams,
@@ -9,6 +10,7 @@ import type {
 } from '@hot-labs/near-connect';
 import type {
   Account as NearConnectAccount,
+  AccountWithSignedMessage,
   Network,
   SignedMessage as NcSignedMessage,
   SignInParams,
@@ -112,7 +114,7 @@ export class PrivySigner extends Signer {
  * Most built-in method in puts and return types are compatible with NearConnector types but some
  * which aren't or don't exist in near-api-js are implemented here and annotated with nc* prefix, e.g. {@link ncSignMessage}.
  */
-export class CustomAccount extends Account {
+export class AccountWithPrivySigner extends Account {
   /** The Privy signer used for all signing operations on this account. */
   readonly privySigner: PrivySigner;
 
@@ -141,7 +143,7 @@ export class CustomAccount extends Account {
    *   function-call access key is submitted on-chain before returning.
    * @returns A single-account array matching {@link NearWalletBase.signIn} result shape.
    */
-  async signIn(data?: SignInParams): Promise<NearConnectAccount[]> {
+  async ncSignIn(data?: SignInParams): Promise<NearConnectAccount[]> {
     if (data?.addFunctionCallKey) {
       const { contractId, publicKey, allowMethods, gasAllowance } = data.addFunctionCallKey;
       await this.addFunctionCallAccessKey({
@@ -157,12 +159,35 @@ export class CustomAccount extends Account {
         },
       ];
     }
+
     return [
       {
         accountId: this.privyConfig.wallet.address,
         publicKey: publicKeyFromImplicit(this.privyConfig.wallet.address).toString(),
       },
     ];
+  }
+
+  /**
+   * near-connect shim: returns the combined account-plus-signature shape.
+   *
+   * @param data - Sign-in parameters plus the message payload to sign.
+   * @returns A single-account array matching the near-connect `signInAndSignMessage` contract.
+   */
+  async ncSignInAndSignMessage(
+    data: SignInAndSignMessageParams,
+  ): Promise<AccountWithSignedMessage[]> {
+    const accounts = await this.ncSignIn(data);
+    const signedMessage = await this.ncSignMessage({
+      ...data.messageParams,
+      network: data.network,
+      signerId: accounts[0]?.accountId,
+    });
+
+    return accounts.map((account) => ({
+      ...account,
+      signedMessage,
+    }));
   }
 
   async signOut(_data?: { network?: Network }): Promise<void> {}

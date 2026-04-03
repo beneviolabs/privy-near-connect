@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { initSigningPage } from '@peerfolio/privy-near-connect/sign-page';
+import { initSigningPage, channelMsg } from '@peerfolio/privy-near-connect/sign-page';
 import type { SignPageSession } from '@peerfolio/privy-near-connect/sign-page';
 import Privy, { LocalStorage } from '@privy-io/js-sdk-core';
 
-export const privy = new Privy({
-  appId: import.meta.env.VITE_PRIVY_APP_ID!,
-  clientId: import.meta.env.VITE_PRIVY_APP_CLIENT_ID!,
+const privy = new Privy({
+  appId: sessionStorage.getItem('privy_app_id') ?? import.meta.env.VITE_PRIVY_APP_ID!,
+  clientId: sessionStorage.getItem('privy_client_id') ?? import.meta.env.VITE_PRIVY_APP_CLIENT_ID!,
   storage: new LocalStorage(),
 });
 
@@ -44,7 +44,7 @@ export default function SignPage() {
       setErrorMsg(message);
       setStatus('error');
       // Notify the opener so it can surface the error on the main screen
-      window.opener?.postMessage({ type: 'ERROR', message }, window.location.origin);
+      window.opener?.postMessage(channelMsg.error(message), window.location.origin);
     }
   }
 

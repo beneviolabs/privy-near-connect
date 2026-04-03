@@ -6,9 +6,10 @@ import {
   UnsupportedSigningPayloadError,
   WindowOpenerClosedError,
 } from '@/signing/errors';
-import { createProvider, CustomAccount } from '@/signing/account';
+import { createProvider, AccountWithPrivySigner } from '@/signing/account';
 import type { PrivyConfig, RpcOptions } from '@/signing/account';
-import type { ChannelMsg, SigningPayload, SigningResult } from '@/types';
+import { channelMsg } from '@/types';
+import type { SigningPayload, SigningResult } from '@/types';
 import { LOG_PREFIX } from '@/log';
 
 export type { RpcOptions } from '@/signing/account';
@@ -83,10 +84,17 @@ export function buildSignFn(
       privyClient: privy,
       wallet: walletToUse,
     };
-    const account = new CustomAccount(walletConfig, createProvider(payload.network, rpcOptions));
+    const network = 'network' in payload ? payload.network : undefined;
+    const account = new AccountWithPrivySigner(walletConfig, createProvider(network, rpcOptions));
 
     let result: SigningResult;
     switch (payload.kind) {
+      case 'signIn':
+        result = await account.ncSignIn(payload);
+        break;
+      case 'signInAndSignMessage':
+        result = await account.ncSignInAndSignMessage(payload);
+        break;
       case 'signMessage':
         result = await account.ncSignMessage(payload);
         break;
@@ -103,7 +111,7 @@ export function buildSignFn(
         throw new UnsupportedSigningPayloadError();
     }
 
-    const resultMsg = { type: 'RESULT', result } satisfies ChannelMsg;
+    const resultMsg = channelMsg.result(result);
     console.debug(LOG_PREFIX, '→ RESULT posted', resultMsg);
     (window.opener as Window).postMessage(resultMsg, target);
     window.close();

@@ -14,7 +14,9 @@ export default defineConfig({
       provider: 'v8',
       include: ['src/**'],
       reporter: ['text', 'lcov'],
-      // TODO: Re-enable and enforce coverage thresholds once code base stabilizes.
+      thresholds: {
+        lines: 80,
+      },
     },
   },
 });

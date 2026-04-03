@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@hot-labs/near-connect": "^0.11.1",
     "@peerfolio/privy-near-connect": "file:../..",
     "@privy-io/js-sdk-core": "^0.60.5",
     "buffer": "^6.0.3",
