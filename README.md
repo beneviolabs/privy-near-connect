@@ -83,7 +83,7 @@ The workflow in `.github/workflows/build-executor.yml` runs automatically on eve
 
 1. **Ensure the workflow has write access.** In the repository settings, go to _Settings → Actions → General → Workflow permissions_ and select "Read and write permissions".
 
-2. **Push to `main`** (or trigger manually via _Actions → Build and publish executor.js to release branch → Run workflow_). The workflow will:
+2. **Merge to `main`** (or trigger manually via _Actions → Build and publish executor.js to release branch → Run workflow_). The workflow will:
    - Install dependencies
    - Build the library with `NODE_ENV=production`
    - Check out (or create) the `release` branch

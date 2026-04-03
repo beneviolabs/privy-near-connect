@@ -1,8 +1,8 @@
-name: Build and publish executor.js to release branch
+name: Release executor.js
 
 on:
   push:
-    branches: [main, build-ci]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
