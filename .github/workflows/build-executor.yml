@@ -1,4 +1,4 @@
-name: Build and publish executor.js to build branch
+name: Build and publish executor.js to release branch
 
 on:
   push:
@@ -28,7 +28,7 @@ jobs:
         env:
           NODE_ENV: production
 
-      - name: Publish executor.js to build branch
+      - name: Publish executor.js to release branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -37,14 +37,14 @@ jobs:
 
           git fetch origin
 
-          if git ls-remote --exit-code origin build > /dev/null 2>&1; then
-            git checkout -B build origin/build
+          if git ls-remote --exit-code origin release > /dev/null 2>&1; then
+            git checkout -B release origin/release
           else
-            git checkout --orphan build
+            git checkout --orphan release
             git rm -rf . --quiet
           fi
 
           cp /tmp/executor.js executor.js
           git add executor.js
           git diff --staged --quiet || git commit -m "chore: update built executor.js [skip ci]"
-          git push origin build
+          git push origin release
