@@ -140,6 +140,7 @@ var wallet = {
     });
   }
 };
+console.log(LOG_PREFIX, "Initializing wallet and registering with selector");
 var SIGN_PAGE_URL = new URL("#privy-sign", "http://localhost:5173").href;
 wallet.manifest = {
   metadata: {
