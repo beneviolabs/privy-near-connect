@@ -85,7 +85,7 @@ The workflow in `.github/workflows/build-executor.yml` runs automatically on eve
 
 2. **Verify the artifact** is accessible at the raw URL above. It may take a few seconds after the workflow completes for GitHub's CDN to reflect the latest commit.
 
-> The `release` branch is machine-managed. Do not push to it manually — changes will be overwritten on the next workflow run.
+> The `release` branch is machine-managed.
 
 ## FAQ and Troubleshooting
 - You can copy the manifest in examples/react app and add it to https://azbang.github.io/near-connect/ to do cross-origin. Make sure it's being served already.
