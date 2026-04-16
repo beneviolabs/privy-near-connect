@@ -1,11 +1,8 @@
 import type { ConnectorAction } from '@hot-labs/near-connect/build/actions/types.js';
+import { ChevronDownIcon } from '@radix-ui/react-icons';
+import { Text } from '@radix-ui/themes';
 
-import {
-  Section,
-  SummaryCard,
-  type SummaryRow,
-  TransactionGroupCard,
-} from '@/sign-page-plugin/components';
+import { TransactionGroupCard } from '@/sign-page-plugin/components';
 import type { SigningPayload } from '@/types';
 import type { ActionSummary } from '@/sign-page-plugin/utils/actions';
 import { summarizeAction } from '@/sign-page-plugin/utils/actions';
@@ -24,8 +21,9 @@ type TransactionGroup = {
 export type TransactionView = {
   title: string;
   description: string;
-  summaryRows: SummaryRow[];
   transactions: TransactionGroup[];
+  /** Signing account, shown in the Advanced Details section. */
+  accountId?: string;
 };
 
 type TransactionSectionsProps = {
@@ -37,7 +35,7 @@ type TransactionSectionsProps = {
  *
  * @param payload - Transaction-style signing payload.
  * @param currentAccountId - Current connected account shown in the summary.
- * @returns Derived title, description, summary rows, and grouped actions.
+ * @returns Derived title, description, and grouped actions.
  */
 export function buildTransactionView(
   payload: TransactionPayload,
@@ -45,25 +43,21 @@ export function buildTransactionView(
 ): TransactionView {
   let titleOverride: string | undefined;
   let descriptionOverride: string | undefined;
-  let network: string | undefined;
   let transactions: TransactionGroup[];
 
   switch (payload.kind) {
     case 'signAndSendTransaction':
-      network = payload.network;
       transactions = [
         { receiverId: payload.receiverId, actions: payload.actions as ConnectorAction[] },
       ];
       break;
     case 'signAndSendTransactions':
-      network = payload.network;
       transactions = payload.transactions.map((transaction) => ({
         receiverId: transaction.receiverId,
         actions: transaction.actions as ConnectorAction[],
       }));
       break;
     case 'signDelegateActions':
-      network = payload.network;
       titleOverride = 'Delegate actions';
       descriptionOverride = 'The app is asking you to sign a meta-transaction.';
       transactions = payload.delegateActions.map((actionGroup) => ({
@@ -81,14 +75,8 @@ export function buildTransactionView(
     description:
       descriptionOverride ??
       buildTransactionDescription(primaryAction, allActions.length, transactions.length),
-    summaryRows: buildTransactionSummaryRows(
-      primaryAction,
-      transactions,
-      allActions.length,
-      network,
-      currentAccountId,
-    ),
     transactions,
+    accountId: currentAccountId,
   };
 }
 
@@ -96,72 +84,37 @@ export function buildTransactionView(
 export function TransactionSections({ request }: TransactionSectionsProps) {
   return (
     <>
-      {request.summaryRows.length > 0 ? (
-        <Section title="Transaction summary" surface="none">
-          <SummaryCard rows={request.summaryRows} />
-        </Section>
-      ) : null}
-      <Section title="Advanced details" surface="none">
-        <div className="pnc-transaction-list">
-          {request.transactions.map((transaction, index) => (
-            <TransactionGroupCard
-              key={`${transaction.receiverId}-${index}`}
-              receiverId={transaction.receiverId}
-              transactionIndex={index}
-              actions={transaction.actions}
-            />
-          ))}
+      <details className="pnc-advanced-details" open>
+        <summary className="pnc-advanced-details__trigger">
+          <Text size="4" weight="bold" className="pnc-advanced-details__title">
+            Advanced Details
+          </Text>
+          <ChevronDownIcon className="pnc-advanced-details__caret" width="20" height="20" />
+        </summary>
+        <div className="pnc-advanced-details__content">
+          {request.accountId ? (
+            <div className="pnc-advanced-details__account">
+              <Text size="3" weight="medium" className="pnc-advanced-details__account-label">
+                Account ID
+              </Text>
+              <Text size="3" className="pnc-advanced-details__account-value">
+                {request.accountId}
+              </Text>
+            </div>
+          ) : null}
+          <div className="pnc-transaction-list">
+            {request.transactions.map((transaction, index) => (
+              <TransactionGroupCard
+                key={`${transaction.receiverId}-${index}`}
+                receiverId={transaction.receiverId}
+                actions={transaction.actions}
+              />
+            ))}
+          </div>
         </div>
-      </Section>
+      </details>
     </>
   );
-}
-
-function buildTransactionSummaryRows(
-  primaryAction: ActionSummary | null,
-  transactions: TransactionGroup[],
-  totalActions: number,
-  network: string | undefined,
-  currentAccountId: string | undefined,
-): SummaryRow[] {
-  const rows: SummaryRow[] = [];
-
-  if (currentAccountId) rows.push({ label: 'From', value: currentAccountId });
-
-  if (primaryAction?.type === 'Transfer' && primaryAction.amount) {
-    rows.push({ label: 'Amount', value: `${primaryAction.amount} NEAR` });
-  }
-
-  if (primaryAction?.type === 'FunctionCall' && primaryAction.method) {
-    rows.push({ label: 'Method', value: primaryAction.method });
-  }
-
-  if (transactions.length === 1 && transactions[0]) {
-    rows.push({
-      label: primaryAction?.type === 'FunctionCall' ? 'Contract' : 'To',
-      value: transactions[0].receiverId,
-    });
-  }
-
-  if (
-    primaryAction?.type === 'FunctionCall' &&
-    primaryAction.deposit &&
-    primaryAction.deposit !== '0'
-  ) {
-    rows.push({ label: 'Deposit', value: `${primaryAction.deposit} NEAR` });
-  }
-
-  if (transactions.length > 1) {
-    rows.push({ label: 'Transactions', value: String(transactions.length) });
-  }
-
-  if (totalActions > 1) {
-    rows.push({ label: 'Actions', value: String(totalActions) });
-  }
-
-  rows.push({ label: 'Network', value: formatNetwork(network) });
-
-  return rows;
 }
 
 function buildTransactionTitle(primaryAction: ActionSummary | null, totalActions: number): string {
@@ -198,9 +151,4 @@ function buildTransactionDescription(
   }
 
   return 'Review the request details and approve to continue.';
-}
-
-function formatNetwork(network: string | undefined): string {
-  if (!network || network === 'mainnet') return 'NEAR';
-  return `NEAR ${network}`;
 }

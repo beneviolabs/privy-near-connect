@@ -1,11 +1,10 @@
 import type { ConnectorAction } from '@hot-labs/near-connect/build/actions/types.js';
-import { CheckCircledIcon, GlobeIcon, InfoCircledIcon } from '@radix-ui/react-icons';
+import { CheckCircledIcon, ChevronDownIcon, GlobeIcon } from '@radix-ui/react-icons';
 import {
   Avatar,
   Badge,
   Button as ThemedButton,
   Card,
-  DataList,
   Heading,
   Text,
 } from '@radix-ui/themes';
@@ -52,7 +51,6 @@ type ApprovalNoticeProps = {
 
 type TransactionGroupCardProps = {
   receiverId: string;
-  transactionIndex: number;
   actions: ConnectorAction[];
 };
 
@@ -173,58 +171,25 @@ export function MessageBlock({ message }: { message: string }) {
   );
 }
 
-/** Renders the summary card for transaction-style payloads. */
-export function SummaryCard({ rows }: { rows: SummaryRow[] }) {
+/** Renders individual action cards for a single receiver in a transaction group. */
+export function TransactionGroupCard({ receiverId, actions }: TransactionGroupCardProps) {
   return (
-    <Card size="2" className="pnc-summary">
-      <DataList.Root size="2" className="pnc-summary__list">
-        {rows.map((row) => (
-          <DataList.Item key={row.label} align="center" className="pnc-summary__item">
-            <DataList.Label minWidth="112px">
-              <Text size="2" weight="medium" className="pnc-summary__label">
-                {row.label}
-              </Text>
-            </DataList.Label>
-            <DataList.Value>
-              <Text size="2" weight="medium" className="pnc-summary__value">
-                {row.value}
-              </Text>
-            </DataList.Value>
-          </DataList.Item>
-        ))}
-      </DataList.Root>
-    </Card>
+    <>
+      {actions.map((action, actionIndex) => (
+        <ActionCard
+          key={`${receiverId}-${action.type}-${actionIndex}`}
+          receiverId={receiverId}
+          action={action}
+        />
+      ))}
+    </>
   );
 }
 
-/** Renders a transaction group for a single receiver. */
-export function TransactionGroupCard({
-  receiverId,
-  transactionIndex,
-  actions,
-}: TransactionGroupCardProps) {
-  return (
-    <Card size="2" className="pnc-transaction-group">
-      <div className="pnc-transaction-group__header">
-        <Text size="1" weight="medium" className="pnc-transaction-group__eyebrow">
-          {`Transaction ${transactionIndex + 1}`}
-        </Text>
-        <Text size="2" weight="medium" className="pnc-transaction-group__receiver">
-          {receiverId}
-        </Text>
-      </div>
-      <div className="pnc-transaction-group__actions">
-        {actions.map((action, actionIndex) => (
-          <ActionCard key={`${receiverId}-${action.type}-${actionIndex}`} action={action} />
-        ))}
-      </div>
-    </Card>
-  );
-}
-
-function ActionCard({ action }: { action: ConnectorAction }) {
+function ActionCard({ receiverId, action }: { receiverId: string; action: ConnectorAction }) {
   const summary = summarizeAction(action);
   const fields = buildActionFields(summary);
+  const footer = buildActionFooter(summary);
 
   return (
     <div className="pnc-action-card">
@@ -237,24 +202,33 @@ function ActionCard({ action }: { action: ConnectorAction }) {
         {formatActionLabel(summary.type)}
       </Badge>
       <div className="pnc-action-card__fields">
+        <div className="pnc-action-card__field">
+          <Text size="2" weight="medium" className="pnc-action-card__field-label">
+            To
+          </Text>
+          <Text size="3" weight="medium" className="pnc-action-card__field-value">
+            {receiverId}
+          </Text>
+        </div>
         {fields.map((field) => (
           <div key={`${field.label}-${field.value}`} className="pnc-action-card__field">
-            <Text size="1" weight="medium" className="pnc-action-card__field-label">
+            <Text size="2" weight="medium" className="pnc-action-card__field-label">
               {field.label}
             </Text>
-            <Text size="2" weight="medium" className="pnc-action-card__field-value">
+            <Text size="3" weight="medium" className="pnc-action-card__field-value">
               {field.value}
             </Text>
           </div>
         ))}
       </div>
+      {footer ? <p className="pnc-action-card__footer">{footer}</p> : null}
       {summary.argsJson ? (
         <details className="pnc-action-card__details">
           <summary className="pnc-action-card__details-summary">
-            <Text size="2" weight="medium">
-              View details
+            <Text size="3" weight="medium">
+              View Details
             </Text>
-            <InfoCircledIcon className="pnc-action-card__details-caret" width="16" height="16" />
+            <ChevronDownIcon className="pnc-action-card__details-caret" width="16" height="16" />
           </summary>
           <pre className="pnc-action-card__details-json">{summary.argsJson}</pre>
         </details>
@@ -265,15 +239,10 @@ function ActionCard({ action }: { action: ConnectorAction }) {
 
 function buildActionFields(summary: ActionSummary): SummaryRow[] {
   switch (summary.type) {
-    case 'FunctionCall': {
-      const rows: SummaryRow[] = [];
-      if (summary.method) rows.push({ label: 'Method', value: summary.method });
-      if (summary.deposit && summary.deposit !== '0') {
-        rows.push({ label: 'Deposit', value: `${summary.deposit} NEAR` });
-      }
-      if (summary.gas) rows.push({ label: 'Gas', value: summary.gas });
-      return rows.length > 0 ? rows : [{ label: 'Action', value: formatActionLabel(summary.type) }];
-    }
+    case 'FunctionCall':
+      return summary.method
+        ? [{ label: 'Method', value: summary.method }]
+        : [{ label: 'Action', value: formatActionLabel(summary.type) }];
 
     case 'Transfer':
       return summary.amount
@@ -288,6 +257,14 @@ function buildActionFields(summary: ActionSummary): SummaryRow[] {
     default:
       return [{ label: 'Action', value: formatActionLabel(summary.type) }];
   }
+}
+
+function buildActionFooter(summary: ActionSummary): string | null {
+  if (summary.type !== 'FunctionCall') return null;
+  const parts: string[] = [];
+  if (summary.deposit && summary.deposit !== '0') parts.push(`Deposit: ${summary.deposit} NEAR`);
+  if (summary.gas) parts.push(`Gas: ${summary.gas}`);
+  return parts.length > 0 ? parts.join('   ') : null;
 }
 
 function badgeTone(summary: ActionSummary): 'call' | 'transfer' | 'generic' {

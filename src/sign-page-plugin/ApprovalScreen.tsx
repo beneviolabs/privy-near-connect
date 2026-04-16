@@ -46,7 +46,7 @@ export function ApprovalScreen({
         payload.kind === 'signInAndSignMessage' ? payload.messageParams?.message : undefined;
       return (
         <>
-          <div className="pnc-card__body pnc-approval">
+          <div className="pnc-card__body">
             <ApprovalHeader originInfo={originInfo} eyebrow="Connect to" />
             <ConnectSections message={message} />
           </div>
@@ -70,7 +70,7 @@ export function ApprovalScreen({
     case 'signMessage':
       return (
         <>
-          <div className="pnc-card__body pnc-approval">
+          <div className="pnc-card__body">
             <ApprovalHeader originInfo={originInfo} eyebrow="Sign message from" />
             <SignMessageSections message={payload.message} />
           </div>
@@ -97,7 +97,7 @@ export function ApprovalScreen({
 
       return (
         <>
-          <div className="pnc-card__body pnc-approval">
+          <div className="pnc-card__body">
             <ApprovalHeader
               originInfo={originInfo}
               eyebrow="Request from"
