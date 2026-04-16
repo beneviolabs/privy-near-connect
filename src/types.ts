@@ -127,6 +127,8 @@ export type SignPageOptions = {
 export type SignPageSession = {
   /** Payload received from the opener via `SIGN_REQUEST`. */
   payload: SigningPayload;
+  /** Origin of the window that sent `SIGN_REQUEST`. Useful for showing the requesting app to the user. */
+  targetOrigin: string;
   /** Signs the payload using Privy and posts the result to the opener. */
   sign: () => Promise<void>;
 };

@@ -147,6 +147,7 @@ export const initSigningPage = async (
 
   return {
     payload,
+    targetOrigin,
     sign: buildSignFn(targetOrigin, privy, payload, options?.wallet, options?.rpcOptions),
   };
 };
