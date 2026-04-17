@@ -43,9 +43,6 @@ type Status =
  * opener handshake via {@link initSigningPage}. Screens are selected based on
  * the incoming payload's `kind`.
  *
- * When signing fails, the error is automatically relayed to the opener via
- * an `ERROR` channel message — consumers do not need to post it themselves.
- *
  * The component wraps its output in a Radix Themes `<Theme>` element, so the
  * full Radix Themes stylesheet must be imported once in the consuming app:
  *
@@ -91,7 +88,6 @@ export function SignPagePlugin(props: SignPageProps) {
     const session = status.session;
     setStatus({ kind: 'signing', session });
     session.sign().catch((e: Error) => {
-      reportError(session.targetOrigin, e.message);
       setStatus({ kind: 'error', message: e.message });
     });
   };
@@ -100,9 +96,6 @@ export function SignPagePlugin(props: SignPageProps) {
     if (onCancel) {
       onCancel();
       return;
-    }
-    if (status.kind === 'ready' || status.kind === 'signing') {
-      reportError(status.session.targetOrigin, 'User cancelled the request');
     }
     if (autoClose) window.close();
   };
@@ -166,14 +159,6 @@ function renderBody(
       onCancel={onCancel}
     />
   );
-}
-
-function reportError(targetOrigin: string, message: string) {
-  try {
-    window.opener?.postMessage(channelMsg.error(message), targetOrigin);
-  } catch {
-    /* opener already closed — nothing to report to */
-  }
 }
 
 async function resolveCurrentAccountId(
