@@ -42,6 +42,7 @@ type ApprovalNoticeProps = {
 type TransactionGroupCardProps = {
   receiverId: string;
   actions: ConnectorAction[];
+  transactionLabel?: string;
 };
 
 /** Renders the shared approval header with origin branding and title copy. */
@@ -134,17 +135,28 @@ export function MessageBlock({ message }: { message: string }) {
 }
 
 /** Renders individual action cards for a single receiver in a transaction group. */
-export function TransactionGroupCard({ receiverId, actions }: TransactionGroupCardProps) {
+export function TransactionGroupCard({
+  receiverId,
+  actions,
+  transactionLabel,
+}: TransactionGroupCardProps) {
   return (
-    <>
-      {actions.map((action, actionIndex) => (
-        <ActionCard
-          key={`${receiverId}-${action.type}-${actionIndex}`}
-          receiverId={receiverId}
-          action={action}
-        />
-      ))}
-    </>
+    <section className="pnc-transaction-group">
+      {transactionLabel ? (
+        <Text size="2" weight="medium" className="pnc-transaction-group__title">
+          {transactionLabel}
+        </Text>
+      ) : null}
+      <div className="pnc-transaction-group__cards">
+        {actions.map((action, actionIndex) => (
+          <ActionCard
+            key={`${receiverId}-${action.type}-${actionIndex}`}
+            receiverId={receiverId}
+            action={action}
+          />
+        ))}
+      </div>
+    </section>
   );
 }
 

@@ -67,6 +67,22 @@ export function summarizeAction(action: ConnectorAction): ActionSummary {
   }
 }
 
+/**
+ * Sums the attached gas across all `FunctionCall` actions and returns it as a
+ * TGas string (e.g. `"90 TGas"`), which is the exact upper bound on gas consumed.
+ *
+ * @param actions - Flat list of actions across all transactions being signed.
+ * @returns Formatted TGas string, or `null` when no attached gas.
+ */
+export function estimateMaxFeeNear(actions: ConnectorAction[]): string | null {
+  const totalGas = actions.reduce<bigint>(
+    (sum, action) => (action.type === 'FunctionCall' ? sum + toBigInt(action.params.gas) : sum),
+    0n,
+  );
+  if (totalGas === 0n) return null;
+  return formatTGas(totalGas);
+}
+
 function formatArgs(args: unknown): string | undefined {
   if (args == null) return undefined;
   try {

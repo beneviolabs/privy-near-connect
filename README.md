@@ -71,6 +71,26 @@ npm run dev
 
 Open the app at http://localhost:5173.
 
+## Linking near-connect lib
+If you're making simultaneous changes to the near-connect lib and want to link this repo's
+node modules to the local near-connect build, you can run
+
+```sh
+# from root of hot-labs/near-connect repo
+yarn build
+cd $DIR/privy-near-connect && \
+npm link $DIR/near-connect && \
+cd examples/react && \
+npm link $DIR/near-connect
+```
+
+And later to unlink:
+```sh
+npm unlink @hot-labs/near-connect --no-save && \
+cd examples/react && \
+npm unlink @hot-labs/near-connect --no-save
+```
+
 ## Deploying executor.js to the `release` branch
 
 The `release` branch serves the compiled `executor.js` directly via GitHub's raw content URL:

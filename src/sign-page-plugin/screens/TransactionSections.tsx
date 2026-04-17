@@ -5,7 +5,7 @@ import { Text } from '@radix-ui/themes';
 import { TransactionGroupCard } from '@/sign-page-plugin/components';
 import type { SigningPayload } from '@/types';
 import type { ActionSummary } from '@/sign-page-plugin/utils/actions';
-import { summarizeAction } from '@/sign-page-plugin/utils/actions';
+import { estimateMaxFeeNear, summarizeAction } from '@/sign-page-plugin/utils/actions';
 
 type TransactionPayload = Extract<
   SigningPayload,
@@ -158,6 +158,9 @@ export function TransactionSections({ request }: TransactionSectionsProps) {
                 key={`${transaction.receiverId}-${index}`}
                 receiverId={transaction.receiverId}
                 actions={transaction.actions}
+                transactionLabel={
+                  request.transactions.length > 1 ? `Transaction ${index + 1}` : undefined
+                }
               />
             ))}
           </div>
@@ -183,11 +186,11 @@ function buildTransactionSummaryRows(
   }
 
   rows.push({ label: 'Network', value: formatNetwork(network) });
-  rows.push({
-    label: 'Estimated Fee',
-    value: '~0.002 NEAR',
-    secondaryValue: '<$0.0001 USD',
-  });
+
+  const maxFee = estimateMaxFeeNear(transactions.flatMap((group) => group.actions));
+  if (maxFee) {
+    rows.push({ label: 'Estimated Fee', value: `≤ ${maxFee}` });
+  }
 
   return rows;
 }
@@ -237,7 +240,7 @@ function buildTransactionDescription(
   }
 
   if (transactionCount > 1 || totalActions > 1) {
-    return 'Review each requested action in the advanced details below before approving.';
+    return 'Review each requested action/transaction in the advanced details below before approving.';
   }
 
   return 'Review the request details and approve to continue.';

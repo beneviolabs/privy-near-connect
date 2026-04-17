@@ -474,6 +474,23 @@
   }
 }
 
+.pnc-transaction-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pnc-transaction-group__title {
+  color: var(--gray-11) !important;
+  letter-spacing: 0.01em;
+}
+
+.pnc-transaction-group__cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .pnc-action-card {
   position: relative;
   background: var(--pnc-surface-muted-background);
