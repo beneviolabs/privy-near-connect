@@ -1,13 +1,6 @@
 import type { ConnectorAction } from '@hot-labs/near-connect/build/actions/types.js';
 import { CheckCircledIcon, ChevronDownIcon, GlobeIcon } from '@radix-ui/react-icons';
-import {
-  Avatar,
-  Badge,
-  Button as ThemedButton,
-  Card,
-  Heading,
-  Text,
-} from '@radix-ui/themes';
+import { Avatar, Badge, Button as ThemedButton, Heading, Text } from '@radix-ui/themes';
 import type { ComponentProps, ReactNode } from 'react';
 
 import type { ActionSummary } from '@/sign-page-plugin/utils/actions';
@@ -37,10 +30,7 @@ type SectionProps = {
 
 type ApprovalHeaderProps = {
   originInfo: OriginInfo;
-  eyebrow: string;
-  title?: string;
-  description?: string;
-  prominentTitle?: boolean;
+  title: string;
 };
 
 type ApprovalNoticeProps = {
@@ -55,13 +45,7 @@ type TransactionGroupCardProps = {
 };
 
 /** Renders the shared approval header with origin branding and title copy. */
-export function ApprovalHeader({
-  originInfo,
-  eyebrow,
-  title,
-  description,
-  prominentTitle = false,
-}: ApprovalHeaderProps) {
+export function ApprovalHeader({ originInfo, title }: ApprovalHeaderProps) {
   return (
     <div className="pnc-approval__header">
       <Avatar
@@ -73,25 +57,9 @@ export function ApprovalHeader({
         className="pnc-approval__avatar"
       />
       <div className="pnc-approval__header-copy">
-        <Text size="2" className="pnc-approval__eyebrow">
-          {eyebrow}
-        </Text>
-        {title ? (
-          <Heading
-            size={prominentTitle ? '7' : '6'}
-            weight="medium"
-            align="center"
-            className="pnc-approval__title"
-            data-prominent={prominentTitle}
-          >
-            {title}
-          </Heading>
-        ) : null}
-        {description ? (
-          <Text size="2" align="center" className="pnc-approval__description">
-            {description}
-          </Text>
-        ) : null}
+        <Heading size="6" weight="medium" align="center" className="pnc-approval__title">
+          {title}
+        </Heading>
       </div>
       <Badge color="violet" radius="full" size="2" variant="soft" className="pnc-approval__origin">
         <GlobeIcon />
@@ -135,13 +103,7 @@ export function Section({ title, surface = 'card', children }: SectionProps) {
       <Text size="3" weight="medium" className="pnc-section__title">
         {title}
       </Text>
-      {surface === 'card' ? (
-        <Card size="2" className="pnc-section__surface">
-          {children}
-        </Card>
-      ) : (
-        children
-      )}
+      {surface === 'card' ? <div className="pnc-section__surface">{children}</div> : children}
     </section>
   );
 }

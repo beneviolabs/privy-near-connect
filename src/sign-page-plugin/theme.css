@@ -15,9 +15,17 @@
 
 /* ---------- Root: viewport container + page background ---------- */
 .pnc-root {
-  --pnc-page-background: var(--violet-3, #f4f0fe);
-  --pnc-card-background: var(--color-panel-solid);
-  --pnc-card-shadow: 0 8px 32px rgba(20, 20, 40, 0.08);
+  --pnc-page-background: #f9f9fb;
+  --pnc-card-background: rgba(255, 255, 255, 0.94);
+  --pnc-card-shadow: 0 18px 50px rgba(37, 27, 79, 0.12);
+  --pnc-surface-background: color-mix(in srgb, white 88%, var(--gray-2) 12%);
+  --pnc-surface-strong-background: color-mix(in srgb, white 95%, var(--accent-2) 5%);
+  --pnc-surface-muted-background: color-mix(in srgb, var(--gray-3) 86%, white 14%);
+  --pnc-surface-border: color-mix(in srgb, var(--gray-5) 55%, white 45%);
+  --pnc-summary-row-background: var(--gray-1);
+  --pnc-summary-row-alt-background: var(--accent-2);
+  --pnc-accent-soft-background: color-mix(in srgb, var(--accent-3) 72%, white 28%);
+  --pnc-accent-soft-color: var(--accent-10);
   --pnc-pill-info-background: #f4efff;
   --pnc-pill-info-color: #6656d8;
   --pnc-pill-warning-background: #fff3d0;
@@ -26,13 +34,20 @@
   height: 100vh;
   height: 100dvh;
   background: var(--pnc-page-background);
+  background-image:
+    radial-gradient(circle at top, rgba(138, 92, 246, 0.08), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.75));
+}
+
+.pnc-page {
+  min-height: 100%;
   display: flex;
   justify-content: center;
   align-items: stretch;
 }
 
 @media (min-width: 600px) {
-  .pnc-root {
+  .pnc-page {
     align-items: center;
     padding: clamp(16px, 3vw, 32px);
   }
@@ -41,6 +56,7 @@
 /* ---------- Card shell ---------- */
 .pnc-card {
   width: 100%;
+  min-height: 100dvh;
   background: var(--pnc-card-background);
   display: flex;
   flex-direction: column;
@@ -48,22 +64,26 @@
 
 @media (min-width: 600px) {
   .pnc-card {
-    max-width: 460px;
-    max-height: 100%;
-    border-radius: 20px;
+    width: min(100%, 560px);
+    min-height: clamp(720px, 82dvh, 860px);
+    max-height: min(900px, calc(100dvh - 40px));
+    border-radius: 24px;
     box-shadow: var(--pnc-card-shadow);
     overflow: hidden;
+    backdrop-filter: blur(18px);
+    border: 1px solid rgba(120, 87, 218, 0.12);
   }
 }
 
 @media (min-width: 900px) {
   .pnc-card {
-    max-width: 500px;
+    width: min(100%, 620px);
   }
 }
 
 /* ---------- Body: scrollable content area ---------- */
 .pnc-card__body {
+  background-color: var(--pnc-page-background);
   flex: 1 1 0;
   min-height: 0;
   overflow-y: auto;
@@ -73,21 +93,21 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 24px;
-  padding: 24px 20px 20px;
+  gap: 28px;
+  padding: 28px 20px 24px;
 }
 
 @media (min-width: 600px) {
   .pnc-card__body {
-    padding: 30px 28px 20px;
-    gap: 28px;
+    padding: 42px 40px 24px;
+    gap: 30px;
   }
 }
 
 @media (min-width: 900px) {
   .pnc-card__body {
-    padding: 36px 36px 24px;
-    gap: 32px;
+    padding: 48px 48px 28px;
+    gap: 30px;
   }
 }
 
@@ -98,20 +118,19 @@
   flex-direction: column;
   gap: 10px;
   padding: 12px 20px max(20px, env(safe-area-inset-bottom));
-  background: var(--pnc-card-background);
-  box-shadow: 0 -1px 0 rgba(16, 24, 40, 0.06);
+  background: var(--pnc-page-background);
 }
 
 @media (min-width: 600px) {
   .pnc-card__footer {
-    padding: 16px 28px 28px;
+    padding: 14px 40px 32px;
     box-shadow: none;
   }
 }
 
 @media (min-width: 900px) {
   .pnc-card__footer {
-    padding: 18px 36px 36px;
+    padding: 14px 48px 32px;
   }
 }
 
@@ -122,7 +141,7 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 12px;
+  gap: 14px;
 }
 
 @media (min-width: 600px) {
@@ -157,39 +176,15 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-}
-
-.pnc-approval__eyebrow {
-  color: var(--gray-11) !important;
-  line-height: 1.3;
+  gap: 0;
 }
 
 .pnc-approval__title {
   max-width: 16rem;
+  margin: 0;
   color: var(--gray-12);
   line-height: 0.98;
   letter-spacing: -0.06em;
-}
-
-.pnc-approval__title[data-prominent='false'] {
-  font-size: clamp(1.6rem, 5.5vw, 2rem);
-  line-height: 1.05;
-  letter-spacing: -0.04em;
-  max-width: 18rem;
-}
-
-@media (min-width: 900px) {
-  .pnc-approval__title[data-prominent='false'] {
-    font-size: 2.25rem;
-  }
-}
-
-.pnc-approval__description {
-  max-width: 20rem;
-  color: var(--gray-11) !important;
-  line-height: 1.45;
-  font-size: clamp(0.875rem, 3.5vw, 1rem);
 }
 
 .pnc-approval__origin {
@@ -197,11 +192,11 @@
   align-items: center;
   justify-content: center;
   gap: 7px;
-  padding: 8px 14px !important;
+  padding: 10px 16px !important;
   min-height: 0 !important;
   border-radius: 999px !important;
-  background: #f1edff !important;
-  color: #6a55de !important;
+  background: var(--pnc-accent-soft-background) !important;
+  color: var(--pnc-accent-soft-color) !important;
   box-shadow: none !important;
 }
 
@@ -261,9 +256,16 @@
 
 .pnc-section__surface {
   width: 100%;
-  background: var(--pnc-card-background);
+  box-sizing: border-box;
+  padding: 16px;
+  background: var(--pnc-surface-background);
   border-radius: 16px;
-  box-shadow: 0 1px 2px rgb(16 24 40 / 0.02), inset 0 0 0 1px #f1f2f6;
+}
+
+@media (min-width: 600px) {
+  .pnc-section__surface {
+    padding: 18px;
+  }
 }
 
 /* ---------- Checklist ---------- */
@@ -307,9 +309,9 @@
 /* ---------- Action buttons ---------- */
 .pnc-action-button {
   width: 100%;
-  min-height: 56px;
-  border-radius: 14px !important;
-  font-size: clamp(14px, 4vw, 16px) !important;
+  min-height: 48px;
+  border-radius: 12px !important;
+  font-size: 15px !important;
   font-weight: 500 !important;
   letter-spacing: -0.02em;
   box-shadow: none !important;
@@ -317,19 +319,75 @@
 
 @media (min-width: 600px) {
   .pnc-action-button {
-    font-size: 16px !important;
+    font-size: 15px !important;
   }
 }
 
 .pnc-action-button--primary {
-  background: #7657da !important;
+  background: var(--accent-9) !important;
   color: #ffffff !important;
 }
 
 .pnc-action-button--secondary {
-  background: #ede9ff !important;
-  color: #5d4fd1 !important;
-  box-shadow: inset 0 0 0 1px #cabdff !important;
+  background: var(--pnc-accent-soft-background) !important;
+  color: var(--pnc-accent-soft-color) !important;
+  box-shadow: inset 0 0 0 1px var(--accent-5) !important;
+}
+
+.pnc-transaction-copy {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 18px 16px;
+  border-radius: 16px;
+  background: var(--pnc-surface-background);
+}
+
+.pnc-transaction-copy__text {
+  color: #1c2024 !important;
+  line-height: 1.5;
+}
+
+.pnc-summary-card {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--pnc-summary-row-background);
+}
+
+.pnc-summary-card__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px 28px;
+  background: var(--pnc-summary-row-background);
+}
+
+.pnc-summary-card__row:nth-child(even) {
+  background: var(--pnc-summary-row-alt-background);
+}
+
+.pnc-summary-card__label {
+  color: var(--pnc-accent-soft-color) !important;
+  line-height: 1.4;
+}
+
+.pnc-summary-card__values {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  text-align: right;
+}
+
+.pnc-summary-card__value {
+  color: #1c2024 !important;
+  line-height: 1.4;
+}
+
+.pnc-summary-card__secondary-value {
+  color: var(--gray-11) !important;
+  line-height: 1.35;
 }
 
 /* ---------- Advanced details accordion ---------- */
@@ -351,8 +409,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 6px 0;
-  margin-bottom: 14px;
+  padding: 8px 0;
 }
 
 .pnc-advanced-details__trigger:focus-visible {
@@ -380,6 +437,7 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
+  padding-top: 14px;
 }
 
 .pnc-advanced-details__account {
@@ -418,7 +476,7 @@
 
 .pnc-action-card {
   position: relative;
-  background: #f2f3f6;
+  background: var(--pnc-surface-muted-background);
   border-radius: 16px;
   padding: 24px 10px 10px;
   display: flex;
@@ -429,12 +487,12 @@
 
 .pnc-action-card__badge {
   position: absolute;
-  top: -4px;
+  top: 4px;
   left: 8px;
   width: fit-content;
   padding: 7px 14px !important;
   min-height: 0 !important;
-  border-radius: 14px !important;
+  border-radius: 8px !important;
   box-shadow: none !important;
   font-size: 13px !important;
   font-weight: 500 !important;
@@ -442,8 +500,8 @@
 }
 
 .pnc-action-card__badge--call {
-  background: #e8ecff !important;
-  color: #4a3fd4 !important;
+  background: var(--pnc-accent-soft-background) !important;
+  color: var(--pnc-accent-soft-color) !important;
 }
 
 .pnc-action-card__badge--transfer {
@@ -459,9 +517,9 @@
 .pnc-action-card__fields {
   display: flex;
   flex-direction: column;
-  background: #f8f6ff;
+  overflow: hidden;
+  background: var(--pnc-summary-row-background);
   border-radius: 10px;
-  padding: 2px 0;
 }
 
 .pnc-action-card__field {
@@ -469,15 +527,15 @@
   flex-direction: column;
   gap: 4px;
   padding: 12px 14px;
-  border-bottom: 1px solid rgba(70, 40, 160, 0.05);
+  background: var(--pnc-summary-row-background);
 }
 
-.pnc-action-card__field:last-child {
-  border-bottom: none;
+.pnc-action-card__field:nth-child(even) {
+  background: var(--pnc-summary-row-alt-background);
 }
 
 .pnc-action-card__field-label {
-  color: #6456d6 !important;
+  color: var(--pnc-accent-soft-color) !important;
   line-height: 1.35;
 }
 
@@ -499,7 +557,7 @@
 }
 
 .pnc-action-card__details {
-  background: #f8f6ff;
+  background: var(--pnc-surface-strong-background);
   border-radius: 10px;
   overflow: hidden;
 }
@@ -541,7 +599,7 @@
 .pnc-action-card__details-json {
   margin: 0 12px 12px;
   padding: 14px 16px;
-  background: #eceef2;
+  background: var(--gray-2);
   border-radius: 10px;
   font-family: var(--code-font-family);
   font-size: 13px;

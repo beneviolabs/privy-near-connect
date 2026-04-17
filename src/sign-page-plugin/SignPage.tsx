@@ -129,8 +129,10 @@ export function SignPage(props: SignPageProps) {
       className={rootClass}
       hasBackground={false}
     >
-      <div className="pnc-card">
-        {renderBody(status, currentAccountId, handleApprove, handleCancel)}
+      <div className="pnc-page">
+        <div className="pnc-card">
+          {renderBody(status, currentAccountId, handleApprove, handleCancel)}
+        </div>
       </div>
     </Theme>
   );

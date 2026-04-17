@@ -47,7 +47,7 @@ export function ApprovalScreen({
       return (
         <>
           <div className="pnc-card__body">
-            <ApprovalHeader originInfo={originInfo} eyebrow="Connect to" />
+            <ApprovalHeader originInfo={originInfo} title="Connect to" />
             <ConnectSections message={message} />
           </div>
           <div className="pnc-card__footer">
@@ -71,7 +71,7 @@ export function ApprovalScreen({
       return (
         <>
           <div className="pnc-card__body">
-            <ApprovalHeader originInfo={originInfo} eyebrow="Sign message from" />
+            <ApprovalHeader originInfo={originInfo} title="Sign message from" />
             <SignMessageSections message={payload.message} />
           </div>
           <div className="pnc-card__footer">
@@ -98,12 +98,7 @@ export function ApprovalScreen({
       return (
         <>
           <div className="pnc-card__body">
-            <ApprovalHeader
-              originInfo={originInfo}
-              eyebrow="Request from"
-              title={request.title}
-              description={request.description}
-            />
+            <ApprovalHeader originInfo={originInfo} title={request.title} />
             <TransactionSections request={request} />
           </div>
           <div className="pnc-card__footer">
