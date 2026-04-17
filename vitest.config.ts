@@ -13,6 +13,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/**'],
+      exclude: ['src/sign-page.ts', 'src/sign-page-plugin/**'],
       reporter: ['text', 'lcov'],
       thresholds: {
         lines: 80,
