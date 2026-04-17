@@ -9,26 +9,23 @@ import { channelMsg } from '@/types';
 import { ApprovalScreen } from '@/sign-page-plugin/ApprovalScreen';
 import type { PrivyNearWallet } from '@/signing/signer';
 
-/** Props for the {@link SignPage} component. */
+/** Visual configuration for the sign-page theme and outer shell. */
+export type SignPageTheme = Omit<
+  ThemeProps,
+  'children' | 'asChild' | 'hasBackground' | 'className' | 'style'
+> & {
+  /** Custom class name added to the root `<Theme>` element. */
+  className?: string;
+};
+
+/** Props for the {@link SignPagePlugin} component. */
 export type SignPageProps = {
   /** Initialized Privy client used to sign the incoming payload. */
   privy: Privy;
   /** Forwarded to `initSigningPage` — timeout, origin allowlist, wallet override, RPC options. */
   options?: SignPageOptions;
-  /** Radix Themes accent color. Default: `"violet"`. */
-  accentColor?: ThemeProps['accentColor'];
-  /** Radix Themes gray color. Default: `"slate"`. */
-  grayColor?: ThemeProps['grayColor'];
-  /** Radix Themes radius. Default: `"medium"`. */
-  radius?: ThemeProps['radius'];
-  /** Radix Themes scaling. Default: `"100%"`. */
-  scaling?: ThemeProps['scaling'];
-  /** Radix Themes appearance (light/dark). Default: `"light"`. */
-  appearance?: ThemeProps['appearance'];
-  /** Radix Themes panel background. Default: `"solid"`. */
-  panelBackground?: ThemeProps['panelBackground'];
-  /** Custom class name added to the root `<Theme>` element. */
-  className?: string;
+  /** Theme and outer-shell configuration for the signing page. */
+  theme?: SignPageTheme;
   /** If true, this component will close the popup window after a successful signature. Defaults to true. */
   autoClose?: boolean;
   /** Called when the user presses "Cancel" or "Reject". Defaults to reporting the cancellation to the opener and closing. */
@@ -57,27 +54,21 @@ type Status =
  * import '@peerfolio/privy-near-connect/sign-page-plugin/theme.css';
  * ```
  *
- * Customize the look by passing Theme props (`accentColor`, `grayColor`,
- * `radius`, `scaling`, `appearance`, `panelBackground`) or by overriding the
- * Radix Themes CSS variables (`--accent-9`, `--gray-9`, etc.) scoped to the
- * `.pnc-root` class or a custom `className`.
+ * Customize the look by passing `theme` props or by overriding the Radix
+ * Themes CSS variables (`--accent-9`, `--gray-9`, etc.) through a custom
+ * `theme.className`.
  *
  * @param props - Component props.
+ * @returns The interactive signing page UI.
  */
-export function SignPage(props: SignPageProps) {
-  const {
-    privy,
-    options,
-    className,
-    autoClose = true,
-    onCancel,
-    accentColor = 'violet',
-    grayColor = 'slate',
-    radius = 'medium',
-    scaling = '100%',
-    appearance = 'light',
-    panelBackground = 'solid',
-  } = props;
+export function SignPagePlugin(props: SignPageProps) {
+  const { privy, options, theme, autoClose = true, onCancel } = props;
+  const accentColor = theme?.accentColor ?? 'violet';
+  const grayColor = theme?.grayColor ?? 'slate';
+  const radius = theme?.radius ?? 'medium';
+  const scaling = theme?.scaling ?? '100%';
+  const appearance = theme?.appearance ?? 'light';
+  const panelBackground = theme?.panelBackground ?? 'solid';
   const [status, setStatus] = useState<Status>({ kind: 'waiting' });
   const [currentAccountId, setCurrentAccountId] = useState<string>();
   const initialized = useRef(false);
@@ -116,7 +107,7 @@ export function SignPage(props: SignPageProps) {
     if (autoClose) window.close();
   };
 
-  const rootClass = className ? `pnc-root ${className}` : 'pnc-root';
+  const rootClass = theme?.className ? `pnc-root ${theme.className}` : 'pnc-root';
 
   return (
     <Theme

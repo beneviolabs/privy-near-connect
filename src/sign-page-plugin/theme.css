@@ -3,8 +3,8 @@
  *
  * Visual tokens (colors, radii, shadows, typography) come from Radix Themes
  * via the `<Theme>` wrapper in `<SignPage>`. Customize by passing Theme
- * props (accentColor, grayColor, radius, scaling, appearance) or by
- * overriding the CSS variables declared on `.pnc-root` below.
+ * props through `SignPage.theme` or by overriding the CSS variables
+ * declared on `.pnc-root` below.
  *
  * Structure (2 levels):
  *   .pnc-root            — full-viewport container (bg + centering)
@@ -15,28 +15,30 @@
 
 /* ---------- Root: viewport container + page background ---------- */
 .pnc-root {
-  --pnc-page-background: #f9f9fb;
-  --pnc-card-background: rgba(255, 255, 255, 0.94);
-  --pnc-card-shadow: 0 18px 50px rgba(37, 27, 79, 0.12);
+  --pnc-page-background: color-mix(in srgb, var(--accent-2) 30%, var(--gray-1) 70%);
+  --pnc-page-background-image:
+    radial-gradient(
+      circle at top,
+      color-mix(in srgb, var(--accent-9) 8%, transparent),
+      transparent 34%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--gray-1) 50%, transparent),
+      color-mix(in srgb, var(--gray-1) 75%, transparent)
+    );
   --pnc-surface-background: color-mix(in srgb, white 88%, var(--gray-2) 12%);
   --pnc-surface-strong-background: color-mix(in srgb, white 95%, var(--accent-2) 5%);
   --pnc-surface-muted-background: color-mix(in srgb, var(--gray-3) 86%, white 14%);
-  --pnc-surface-border: color-mix(in srgb, var(--gray-5) 55%, white 45%);
   --pnc-summary-row-background: var(--gray-1);
   --pnc-summary-row-alt-background: var(--accent-2);
   --pnc-accent-soft-background: color-mix(in srgb, var(--accent-3) 72%, white 28%);
   --pnc-accent-soft-color: var(--accent-10);
-  --pnc-pill-info-background: #f4efff;
-  --pnc-pill-info-color: #6656d8;
-  --pnc-pill-warning-background: #fff3d0;
-  --pnc-pill-warning-color: #915930;
 
   height: 100vh;
   height: 100dvh;
   background: var(--pnc-page-background);
-  background-image:
-    radial-gradient(circle at top, rgba(138, 92, 246, 0.08), transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.75));
+  background-image: var(--pnc-page-background-image);
 }
 
 .pnc-page {
@@ -57,7 +59,7 @@
 .pnc-card {
   width: 100%;
   min-height: 100dvh;
-  background: var(--pnc-card-background);
+  background: color-mix(in srgb, var(--gray-1) 94%, transparent);
   display: flex;
   flex-direction: column;
 }
@@ -67,11 +69,10 @@
     width: min(100%, 560px);
     min-height: clamp(720px, 82dvh, 860px);
     max-height: min(900px, calc(100dvh - 40px));
-    border-radius: 24px;
-    box-shadow: var(--pnc-card-shadow);
+    border-radius: calc(var(--radius-6) + 8px);
     overflow: hidden;
     backdrop-filter: blur(18px);
-    border: 1px solid rgba(120, 87, 218, 0.12);
+    border: 1px solid color-mix(in srgb, var(--accent-8) 12%, transparent);
   }
 }
 
@@ -216,13 +217,13 @@
 }
 
 .pnc-approval__notice[data-tone='info'] {
-  background: var(--pnc-pill-info-background);
-  color: var(--pnc-pill-info-color);
+  background: var(--accent-3);
+  color: var(--accent-10);
 }
 
 .pnc-approval__notice[data-tone='warning'] {
-  background: var(--pnc-pill-warning-background);
-  color: var(--pnc-pill-warning-color);
+  background: var(--amber-3);
+  color: var(--amber-11);
 }
 
 .pnc-approval__notice-icon {
@@ -259,7 +260,7 @@
   box-sizing: border-box;
   padding: 16px;
   background: var(--pnc-surface-background);
-  border-radius: 16px;
+  border-radius: var(--radius-6);
 }
 
 @media (min-width: 600px) {
@@ -298,7 +299,7 @@
 /* ---------- Message block ---------- */
 .pnc-approval__message {
   margin: 0;
-  color: #1c2024;
+  color: var(--gray-12);
   font-size: 17px;
   line-height: 1.45;
   letter-spacing: -0.02em;
@@ -310,7 +311,7 @@
 .pnc-action-button {
   width: 100%;
   min-height: 48px;
-  border-radius: 12px !important;
+  border-radius: var(--radius-5) !important;
   font-size: 15px !important;
   font-weight: 500 !important;
   letter-spacing: -0.02em;
@@ -325,7 +326,7 @@
 
 .pnc-action-button--primary {
   background: var(--accent-9) !important;
-  color: #ffffff !important;
+  color: var(--accent-contrast) !important;
 }
 
 .pnc-action-button--secondary {
@@ -338,19 +339,19 @@
   width: 100%;
   box-sizing: border-box;
   padding: 18px 16px;
-  border-radius: 16px;
+  border-radius: var(--radius-6);
   background: var(--pnc-surface-background);
 }
 
 .pnc-transaction-copy__text {
-  color: #1c2024 !important;
+  color: var(--gray-12) !important;
   line-height: 1.5;
 }
 
 .pnc-summary-card {
   width: 100%;
   overflow: hidden;
-  border-radius: 16px;
+  border-radius: var(--radius-6);
   background: var(--pnc-summary-row-background);
 }
 
@@ -381,7 +382,7 @@
 }
 
 .pnc-summary-card__value {
-  color: #1c2024 !important;
+  color: var(--gray-12) !important;
   line-height: 1.4;
 }
 
@@ -415,7 +416,7 @@
 .pnc-advanced-details__trigger:focus-visible {
   outline: 2px solid var(--accent-8);
   outline-offset: 2px;
-  border-radius: 6px;
+  border-radius: var(--radius-3);
 }
 
 .pnc-advanced-details__title {
@@ -494,7 +495,7 @@
 .pnc-action-card {
   position: relative;
   background: var(--pnc-surface-muted-background);
-  border-radius: 16px;
+  border-radius: var(--radius-6);
   padding: 24px 10px 10px;
   display: flex;
   flex-direction: column;
@@ -509,7 +510,7 @@
   width: fit-content;
   padding: 7px 14px !important;
   min-height: 0 !important;
-  border-radius: 8px !important;
+  border-radius: var(--radius-4) !important;
   box-shadow: none !important;
   font-size: 13px !important;
   font-weight: 500 !important;
@@ -522,8 +523,8 @@
 }
 
 .pnc-action-card__badge--transfer {
-  background: #d7f0df !important;
-  color: #134a2d !important;
+  background: var(--green-3) !important;
+  color: var(--green-11) !important;
 }
 
 .pnc-action-card__badge--generic {
@@ -536,7 +537,7 @@
   flex-direction: column;
   overflow: hidden;
   background: var(--pnc-summary-row-background);
-  border-radius: 10px;
+  border-radius: var(--radius-5);
 }
 
 .pnc-action-card__field {
@@ -557,7 +558,7 @@
 }
 
 .pnc-action-card__field-value {
-  color: #1c2024 !important;
+  color: var(--gray-12) !important;
   line-height: 1.45;
   overflow-wrap: anywhere;
 }
@@ -575,7 +576,7 @@
 
 .pnc-action-card__details {
   background: var(--pnc-surface-strong-background);
-  border-radius: 10px;
+  border-radius: var(--radius-5);
   overflow: hidden;
 }
 
@@ -594,13 +595,13 @@
   justify-content: space-between;
   gap: 12px;
   padding: 14px 16px;
-  color: #1c2024;
+  color: var(--gray-12);
 }
 
 .pnc-action-card__details-summary:focus-visible {
   outline: 2px solid var(--accent-8);
   outline-offset: -2px;
-  border-radius: 10px;
+  border-radius: var(--radius-5);
 }
 
 .pnc-action-card__details-caret {
@@ -617,7 +618,7 @@
   margin: 0 12px 12px;
   padding: 14px 16px;
   background: var(--gray-2);
-  border-radius: 10px;
+  border-radius: var(--radius-5);
   font-family: var(--code-font-family);
   font-size: 13px;
   line-height: 1.6;

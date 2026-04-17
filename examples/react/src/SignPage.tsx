@@ -1,5 +1,5 @@
 import Privy, { LocalStorage } from '@privy-io/js-sdk-core';
-import { SignPage as PluginSignPage } from '@peerfolio/privy-near-connect/sign-page-plugin';
+import { SignPagePlugin } from '@peerfolio/privy-near-connect/sign-page-plugin';
 import '@radix-ui/themes/styles.css';
 import '@peerfolio/privy-near-connect/sign-page-plugin/theme.css';
 
@@ -10,5 +10,5 @@ const privy = new Privy({
 });
 
 export default function SignPage() {
-  return <PluginSignPage privy={privy} />;
+  return <SignPagePlugin privy={privy} />;
 }
