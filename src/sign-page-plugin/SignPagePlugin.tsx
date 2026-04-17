@@ -5,9 +5,8 @@ import { useEffect, useRef, useState } from 'react';
 
 import { initSigningPage } from '@/sign-page';
 import type { SignPageOptions, SignPageSession } from '@/types';
-import { channelMsg } from '@/types';
 import { ApprovalScreen } from '@/sign-page-plugin/ApprovalScreen';
-import type { PrivyNearWallet } from '@/signing/signer';
+import { isPrivyNearWallet, type PrivyNearWallet } from '@/signing/signer';
 
 /** Visual configuration for the sign-page theme and outer shell. */
 export type SignPageTheme = Omit<
@@ -170,20 +169,4 @@ async function resolveCurrentAccountId(
   const { user } = await privy.user.get();
   const linkedWallet = user.linked_accounts.find(isPrivyNearWallet);
   return linkedWallet?.address;
-}
-
-function isPrivyNearWallet(account: unknown): account is PrivyNearWallet {
-  if (typeof account !== 'object' || account === null) return false;
-
-  const typedAccount = account as {
-    type?: unknown;
-    chain_type?: unknown;
-    address?: unknown;
-  };
-
-  return (
-    typedAccount.type === 'wallet' &&
-    typedAccount.chain_type === 'near' &&
-    typeof typedAccount.address === 'string'
-  );
 }

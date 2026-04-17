@@ -15,7 +15,7 @@
 
 /* ---------- Root: viewport container + page background ---------- */
 .pnc-root {
-  --pnc-page-background: color-mix(in srgb, var(--accent-2) 30%, var(--gray-1) 70%);
+  --pnc-page-background: var(--gray-2);
   --pnc-page-background-image:
     radial-gradient(
       circle at top,
