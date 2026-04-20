@@ -41,23 +41,25 @@ An [example React app](./examples/react/) is also included to demonstrate usage 
   Once a user auths with Privy, the requisite cookies/local storage will be set on their
 browser. This allows the sign page to auth during calls to Privy APIs for signing operations.
 
-3. Setup a signing screen route in your app
+3. Setup a signing screen route in your app on `/sign` (or any path you prefer, just make sure to update the manifest later with the correct URL).
 
   ```jsx
-  // On /your-sign-page render
-  import { initSigningPage, channelMsg } from '@peerfolio/privy-near-connect/sign-page';
+  // **Option A**: Build your own custom signing page UI
+  import { initSigningPage } from '@peerfolio/privy-near-connect/sign-page';
+  import Privy from '@privy-io/js-sdk-core';
 
   export default function SignPage() {
     // Recommended: Optionally check here that user is authed to Privy
     const privyClient = new Privy({
-      appId: PRIVY_APP_ID!,
-      clientId: PRIVY_APP_CLIENT_ID!,
+      appId: PRIVY_APP_ID,
+      clientId: PRIVY_APP_CLIENT_ID,
       storage: new LocalStorage(),
     });
 
     let session;
 
-    // if your user has multiple NEAR wallets you may provide it here
+    // allowedOrigins restricts which dApp origins may send a SIGN_REQUEST to this page
+    // You may also specify the wallet to be used for signing here if a user has multiple wallets in their Privy account. Check the jsdocs for details.
     initSigningPage(privyClient, { allowedOrigins: ['https://yourdapp.example.com'] }).then((s) => { session = s });
 
     return (
@@ -76,7 +78,7 @@ browser. This allows the sign page to auth during calls to Privy APIs for signin
     );
   }
 
-  // alternatively, you may use the customizable SignPagePlugin component provided by this library
+  // **Option B**: Use the SignPagePlugin component for a pre-built signing page UI
   import { SignPagePlugin } from '@peerfolio/privy-near-connect/sign-page-plugin';
   import '@radix-ui/themes/styles.css';
   import '@peerfolio/privy-near-connect/sign-page-plugin/theme.css';
@@ -124,11 +126,11 @@ This page will be opened in a popup by the near-connect SDK when a signing reque
         "isPrivyConnect": true,
         "storage": true,
         "allowsOpen": [
-          "https://yourdapp.com",
+          "https://yourdapp.com"
         ]
       },
       "metadata": {
-        "signPageURL": "http://yourdapp.com/sign"
+        "signPageURL": "https://yourdapp.com/sign"
       }
     },
     ]
@@ -138,6 +140,8 @@ This page will be opened in a popup by the near-connect SDK when a signing reque
   ii. Initialize near-connect in your dApp and specify the wallet from the manifest:
 
   ```js
+  import { NearConnector } from '@hot-labs/near-connect';
+
   const connector = new NearConnector({
     manifest: '/manifest.json',
     network: 'mainnet',
@@ -161,7 +165,7 @@ This page will be opened in a popup by the near-connect SDK when a signing reque
   ```jsx
   const w = await connector.wallet();
   // This will open the signing page you set up in your app to prompt the user to approve the transaction. Once they approve or reject, the popup will close and the promise will resolve with the signed transaction or reject with an error.
-  const result = await w.signTransaction({...txn});
+  const result = await w.signAndSendTransaction({...txn});
   ```
 
 ## Development
@@ -175,14 +179,15 @@ npm run test
 
 The React example in [examples/react](examples/react) provides a simple sign-message UI.
 
-1. Run the library in watch mode in one terminal:
+1. Run the library in continuous build and watch mode in one terminal:
 
 ```bash
 npm run build-serve:watch
 ```
 
-It also serves the executor.js file at localhost:8001, which allows the Near Connector
+It serves the executor.js file at localhost:8001, which allows the Near Connector
 to fetch the executor code from your local.
+This executor URL is already configured in the example app's manifest.json.
 
 2. Then run the example app in another terminal:
 
