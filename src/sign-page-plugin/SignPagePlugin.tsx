@@ -21,8 +21,8 @@ export type SignPageTheme = Omit<
 export type SignPageProps = {
   /** Initialized Privy client used to sign the incoming payload. */
   privy: Privy;
-  /** Forwarded to `initSigningPage` — timeout, origin allowlist, wallet override, RPC options. */
-  options?: SignPageOptions;
+  /** Forwarded to `initSigningPage` */
+  options: SignPageOptions;
   /** Theme and outer-shell configuration for the signing page. */
   theme?: SignPageTheme;
   /** If true, this component will close the popup window after a successful signature. Defaults to true. */
@@ -73,7 +73,7 @@ export function SignPagePlugin(props: SignPageProps) {
     if (initialized.current) return;
     initialized.current = true;
 
-    resolveCurrentAccountId(privy, options?.wallet)
+    resolveCurrentAccountId(privy, options.wallet)
       .then((accountId) => setCurrentAccountId(accountId))
       .catch(() => undefined);
 

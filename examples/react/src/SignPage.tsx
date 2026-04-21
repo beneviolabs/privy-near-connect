@@ -1,5 +1,6 @@
 import Privy, { LocalStorage } from '@privy-io/js-sdk-core';
 import { SignPagePlugin } from '@peerfolio/privy-near-connect/sign-page-plugin';
+import type { SignPageProps } from '@peerfolio/privy-near-connect/sign-page-plugin';
 import '@radix-ui/themes/styles.css';
 import '@peerfolio/privy-near-connect/sign-page-plugin/theme.css';
 
@@ -10,5 +11,10 @@ const privy = new Privy({
 });
 
 export default function SignPage() {
-  return <SignPagePlugin privy={privy} />;
+  return (
+    <SignPagePlugin
+      privy={privy as unknown as SignPageProps['privy']}
+      options={{ allowedOrigins: 'all' }}
+    />
+  );
 }

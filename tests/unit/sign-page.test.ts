@@ -1,10 +1,15 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type Privy from '@privy-io/js-sdk-core';
-import type { SigningPayload } from '@/types';
+import type { SignPageOptions, SigningPayload } from '@/types';
 import { channelMsg } from '@/types';
 
-import { NoOpenerError, TimeoutError, WildcardOriginError } from '@/sign-page.errors';
+import {
+  MissingAllowedOriginsError,
+  NoOpenerError,
+  TimeoutError,
+  WildcardOriginError,
+} from '@/sign-page.errors';
 import { initSigningPage } from '@/sign-page';
 import { buildSignFn } from '@/signing/signer';
 
@@ -21,6 +26,10 @@ const TEST_PAYLOAD: SigningPayload = {
   message: 'hello',
   recipient: 'bob.near',
   nonce: new Uint8Array(32),
+};
+
+const DEFAULT_OPTIONS: SignPageOptions = {
+  allowedOrigins: [OPENER_ORIGIN],
 };
 
 function mockOpener() {
@@ -74,11 +83,20 @@ describe('initSigningPage()', () => {
   describe('opener guard', () => {
     it('throws NoOpenerError when window.opener is null', async () => {
       vi.stubGlobal('opener', null);
-      await expect(initSigningPage(mockPrivy())).rejects.toBeInstanceOf(NoOpenerError);
+      await expect(initSigningPage(mockPrivy(), DEFAULT_OPTIONS)).rejects.toBeInstanceOf(
+        NoOpenerError,
+      );
     });
   });
 
   describe('allowedOrigins guard', () => {
+    it('throws MissingAllowedOriginsError when allowedOrigins is omitted', async () => {
+      mockOpener();
+      await expect(initSigningPage(mockPrivy(), {} as SignPageOptions)).rejects.toBeInstanceOf(
+        MissingAllowedOriginsError,
+      );
+    });
+
     it('throws WildcardOriginError when allowedOrigins contains *', async () => {
       mockOpener();
       await expect(initSigningPage(mockPrivy(), { allowedOrigins: ['*'] })).rejects.toBeInstanceOf(
@@ -98,7 +116,7 @@ describe('initSigningPage()', () => {
     it('posts READY to opener with wildcard target', async () => {
       vi.useFakeTimers();
       const opener = mockOpener();
-      const promise = initSigningPage(mockPrivy());
+      const promise = initSigningPage(mockPrivy(), DEFAULT_OPTIONS);
 
       await flushPrivyIframeLoad();
       expect(opener.postMessage).toHaveBeenCalledWith(channelMsg.ready(), '*');
@@ -126,11 +144,11 @@ describe('initSigningPage()', () => {
       const secondPrivy = mockPrivy();
 
       mockOpener();
-      const firstPromise = initSigningPage(firstPrivy, { timeout: 1000 });
+      const firstPromise = initSigningPage(firstPrivy, { ...DEFAULT_OPTIONS, timeout: 1000 });
       await flushPrivyIframeLoad();
       const firstIframe = document.querySelector('iframe[data-privy-embed]') as HTMLIFrameElement;
 
-      const secondPromise = initSigningPage(secondPrivy, { timeout: 1000 });
+      const secondPromise = initSigningPage(secondPrivy, { ...DEFAULT_OPTIONS, timeout: 1000 });
       const iframes = document.querySelectorAll('iframe[data-privy-embed]');
 
       expect(iframes).toHaveLength(1);
@@ -152,7 +170,7 @@ describe('initSigningPage()', () => {
   describe('SIGN_REQUEST handling', () => {
     it('resolves with the payload when SIGN_REQUEST arrives', async () => {
       mockOpener();
-      const promise = initSigningPage(mockPrivy());
+      const promise = initSigningPage(mockPrivy(), DEFAULT_OPTIONS);
       await flushPrivyIframeLoad();
       dispatchSignRequest();
 
@@ -161,9 +179,9 @@ describe('initSigningPage()', () => {
       expect(session.sign).toEqual(expect.any(Function));
     });
 
-    it('accepts SIGN_REQUEST from any origin when allowedOrigins is not configured', async () => {
+    it('accepts SIGN_REQUEST from any origin when allowedOrigins is set to all', async () => {
       mockOpener();
-      const promise = initSigningPage(mockPrivy());
+      const promise = initSigningPage(mockPrivy(), { allowedOrigins: 'all' });
       await flushPrivyIframeLoad();
       dispatchSignRequest(TEST_PAYLOAD, 'https://any-origin.example.com');
 
@@ -189,7 +207,7 @@ describe('initSigningPage()', () => {
     it('ignores messages with an unrecognized type', async () => {
       mockOpener();
       vi.useFakeTimers();
-      const promise = initSigningPage(mockPrivy(), { timeout: 1000 });
+      const promise = initSigningPage(mockPrivy(), { ...DEFAULT_OPTIONS, timeout: 1000 });
 
       await flushPrivyIframeLoad();
       window.dispatchEvent(
@@ -206,7 +224,7 @@ describe('initSigningPage()', () => {
     it('rejects with TimeoutError when SIGN_REQUEST does not arrive in time', async () => {
       mockOpener();
       vi.useFakeTimers();
-      const promise = initSigningPage(mockPrivy(), { timeout: 1000 });
+      const promise = initSigningPage(mockPrivy(), { ...DEFAULT_OPTIONS, timeout: 1000 });
 
       await flushPrivyIframeLoad();
       vi.advanceTimersByTime(1000);
@@ -217,7 +235,7 @@ describe('initSigningPage()', () => {
 
     it('ignores a second SIGN_REQUEST sent after the first was accepted', async () => {
       mockOpener();
-      const promise = initSigningPage(mockPrivy());
+      const promise = initSigningPage(mockPrivy(), DEFAULT_OPTIONS);
       await flushPrivyIframeLoad();
 
       const secondPayload: SigningPayload = {
@@ -236,7 +254,7 @@ describe('initSigningPage()', () => {
 
     it('locks targetOrigin to the first SIGN_REQUEST sender — later senders cannot hijack it', async () => {
       mockOpener();
-      const promise = initSigningPage(mockPrivy());
+      const promise = initSigningPage(mockPrivy(), { allowedOrigins: 'all' });
       await flushPrivyIframeLoad();
 
       dispatchSignRequest(TEST_PAYLOAD, OPENER_ORIGIN);

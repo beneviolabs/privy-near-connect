@@ -1,6 +1,11 @@
 import type Privy from '@privy-io/js-sdk-core';
 
-import { NoOpenerError, TimeoutError, WildcardOriginError } from '@/sign-page.errors';
+import {
+  MissingAllowedOriginsError,
+  NoOpenerError,
+  TimeoutError,
+  WildcardOriginError,
+} from '@/sign-page.errors';
 import { buildSignFn } from '@/signing/signer';
 import { channelMsg, CHANNEL_SOURCE } from '@/types';
 import type { ChannelMsg, SignPageOptions, SignPageSession, SigningPayload } from '@/types';
@@ -69,7 +74,7 @@ function mountPrivyIframe(privy: Privy): Promise<() => void> {
 }
 
 function waitForOpenerSignRequest(
-  allowedOrigins: string[] | undefined,
+  allowedOrigins: string[] | 'all',
   timeout: number,
 ): Promise<{ payload: SigningPayload; targetOrigin: string }> {
   return new Promise((resolve, reject) => {
@@ -81,7 +86,7 @@ function waitForOpenerSignRequest(
     };
 
     const onMessage = (event: MessageEvent) => {
-      if (allowedOrigins && !allowedOrigins.includes(event.origin)) {
+      if (allowedOrigins !== 'all' && !allowedOrigins.includes(event.origin)) {
         console.debug(
           LOG_PREFIX,
           '✗ Ignoring message from disallowed origin',
@@ -116,23 +121,27 @@ function waitForOpenerSignRequest(
  *
  * Sends `READY` to the opener with a wildcard target (`*`). Once a `SIGN_REQUEST`
  * arrives, its sender's origin becomes the exclusive `targetOrigin` used for all
- * subsequent messages. If `allowedOrigins` is provided, only requests from those
- * origins are accepted; otherwise any origin may initiate the request.
+ * subsequent messages. `allowedOrigins` must always be supplied explicitly:
+ * either a concrete origin list or `'all'` to accept any origin.
  *
  * @param privy - An instantiated and initialized Privy client.
- * @param options - Optional timeout and origin allowlist overrides.
+ * @param options - Timeout, origin policy, and signing overrides.
  * @returns A session containing the received payload and a `sign` callback.
  * @throws {@link NoOpenerError} If `window.opener` is not available.
+ * @throws {@link MissingAllowedOriginsError} If `allowedOrigins` was omitted.
  * @throws {@link WildcardOriginError} If `allowedOrigins` contains `'*'`.
  * @throws {@link TimeoutError} If no `SIGN_REQUEST` arrives before timeout.
  */
 export const initSigningPage = async (
   privy: Privy,
-  options?: SignPageOptions,
+  options: SignPageOptions,
 ): Promise<SignPageSession> => {
   console.debug(LOG_PREFIX, '→ initSigningPage start');
   if (!window.opener) throw new NoOpenerError();
-  if (options?.allowedOrigins?.includes('*')) throw new WildcardOriginError();
+  if (options.allowedOrigins === undefined) throw new MissingAllowedOriginsError();
+  if (Array.isArray(options.allowedOrigins) && options.allowedOrigins.includes('*')) {
+    throw new WildcardOriginError();
+  }
 
   await mountPrivyIframe(privy);
 
@@ -140,13 +149,13 @@ export const initSigningPage = async (
   console.debug(LOG_PREFIX, '→ READY posted to *');
 
   const { payload, targetOrigin } = await waitForOpenerSignRequest(
-    options?.allowedOrigins,
-    options?.timeout ?? DEFAULT_SIGN_REQUEST_TIMEOUT_MS,
+    options.allowedOrigins,
+    options.timeout ?? DEFAULT_SIGN_REQUEST_TIMEOUT_MS,
   );
 
   return {
     payload,
     targetOrigin,
-    sign: buildSignFn(targetOrigin, privy, payload, options?.wallet, options?.rpcOptions),
+    sign: buildSignFn(targetOrigin, privy, payload, options.wallet, options.rpcOptions),
   };
 };

@@ -58,8 +58,7 @@ browser. This allows the sign page to auth during calls to Privy APIs for signin
 
     let session;
 
-    // allowedOrigins restricts which dApp origins may send a SIGN_REQUEST to this page
-    // You may also specify the wallet to be used for signing here if a user has multiple wallets in their Privy account. Check the jsdocs for details.
+    // You may also specify the wallet to be used for signing here if a user has multiple wallets in their Privy account. Check the jsdoc for this function for details.
     initSigningPage(privyClient, { allowedOrigins: ['https://yourdapp.example.com'] }).then((s) => { session = s });
 
     return (
@@ -85,7 +84,7 @@ browser. This allows the sign page to auth during calls to Privy APIs for signin
 
   export default function SignPage() {
     ...
-    return <SignPagePlugin privy={privyClient} />;
+    return <SignPagePlugin privy={privyClient} options={{ allowedOrigins: ['https://yourdapp.example.com'] }} />;
   }
   ```
 
@@ -243,17 +242,21 @@ sequenceDiagram
 
 ### Cross-origin support
 
-The signing page can be hosted on a different origin from the dApp. Pass `allowedOrigins` to
-`initSigningPage` to restrict which origins may send a `SIGN_REQUEST`:
+The signing page may be hosted on a different origin from the dApp. `allowedOrigins` is required
+for `initSigningPage`, so developers must explicitly choose either a restrictive allowlist or every domain `'all'`:
 
 ```ts
 initSigningPage(privy, { allowedOrigins: ['https://dapp.example.com'] });
 ```
 
-When `allowedOrigins` is omitted, the sign page accepts a `SIGN_REQUEST` from any origin and
-locks `trustedOrigin` to whoever sent it. This is safe for development but **production
-deployments should always set `allowedOrigins`** to prevent a malicious opener from sending an
-unexpected payload.
+To allow any origin, opt in explicitly:
+
+```ts
+initSigningPage(privy, { allowedOrigins: 'all' });
+```
+
+`'all'` is convenient for development and demos, but most production deployments should use an
+explicit origin list to prevent a malicious window from sending an unexpected payload.
 
 ## Deploying executor.js to the `release` branch
 
