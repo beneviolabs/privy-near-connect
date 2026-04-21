@@ -532,6 +532,11 @@
   color: var(--gray-11) !important;
 }
 
+.pnc-action-card__badge--caution {
+  background: var(--red-3) !important;
+  color: var(--red-11) !important;
+}
+
 .pnc-action-card__fields {
   display: flex;
   flex-direction: column;

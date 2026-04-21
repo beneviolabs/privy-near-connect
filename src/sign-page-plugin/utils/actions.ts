@@ -10,7 +10,7 @@ export type ActionSummary = {
   /** Action discriminator (e.g. `"FunctionCall"`). */
   type: ConnectorAction['type'];
   /** Display category controlling the badge color on the transaction card. */
-  category: 'call' | 'transfer' | 'generic';
+  category: 'call' | 'transfer' | 'generic' | 'caution';
   /** For FunctionCall: method name being invoked. */
   method?: string;
   /** For Transfer / FunctionCall: formatted NEAR amount. */
@@ -19,8 +19,8 @@ export type ActionSummary = {
   deposit?: string;
   /** For FunctionCall: formatted gas. */
   gas?: string;
-  /** For FunctionCall: JSON-rendered args (parsed when args arrived as bytes). */
-  argsJson?: string;
+  /** JSON-rendered action params for the details accordion. */
+  paramsJson?: string;
 };
 
 /**
@@ -38,28 +38,40 @@ export function summarizeAction(action: ConnectorAction): ActionSummary {
         method: action.params.methodName,
         deposit: formatNear(action.params.deposit),
         gas: formatTGas(action.params.gas),
-        argsJson: formatArgs(action.params.args),
+        paramsJson: formatParams(action.params.args),
       };
     case 'Transfer':
       return {
         type: action.type,
         category: 'transfer',
         amount: formatNear(action.params.deposit),
+        paramsJson: formatParams(action.params),
       };
     case 'Stake':
       return {
         type: action.type,
         category: 'generic',
         amount: formatNear(action.params.stake),
+        paramsJson: formatParams(action.params),
       };
     case 'AddKey':
+      return {
+        type: action.type,
+        category: 'caution',
+        paramsJson: formatParams(action.params),
+      };
     case 'DeleteKey':
+      return {
+        type: action.type,
+        category: 'caution',
+        paramsJson: formatParams(action.params),
+      };
     case 'CreateAccount':
     case 'DeleteAccount':
     case 'DeployContract':
     case 'UseGlobalContract':
     case 'DeployGlobalContract':
-      return { type: action.type, category: 'generic' };
+      return { type: action.type, category: 'generic', paramsJson: formatActionParams(action) };
     default: {
       const unknown = action as { type: string };
       return { type: unknown.type as ConnectorAction['type'], category: 'generic' };
@@ -83,21 +95,39 @@ export function estimateMaxFeeNear(actions: ConnectorAction[]): string | null {
   return formatTGas(totalGas);
 }
 
-function formatArgs(args: unknown): string | undefined {
-  if (args == null) return undefined;
+function formatParams(params: unknown): string | undefined {
+  if (params == null) return undefined;
   try {
-    if (args instanceof Uint8Array) {
-      const text = new TextDecoder().decode(args);
-      try {
-        return JSON.stringify(JSON.parse(text), null, 2);
-      } catch {
-        return text;
-      }
-    }
-    return JSON.stringify(args, null, 2);
+    return JSON.stringify(normalizeParamValue(params), null, 2);
   } catch {
     return undefined;
   }
+}
+
+function formatActionParams(action: ConnectorAction): string | undefined {
+  return 'params' in action ? formatParams(action.params) : undefined;
+}
+
+function normalizeParamValue(value: unknown): unknown {
+  if (value instanceof Uint8Array) {
+    const text = new TextDecoder().decode(value);
+    try {
+      return JSON.parse(text);
+    } catch {
+      return text;
+    }
+  }
+
+  if (Array.isArray(value)) return value.map(normalizeParamValue);
+  if (typeof value === 'bigint') return value.toString();
+
+  if (typeof value === 'object' && value !== null) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, nestedValue]) => [key, normalizeParamValue(nestedValue)]),
+    );
+  }
+
+  return value;
 }
 
 function formatNear(yocto: string | bigint | number, maxFractionDigits = 6): string {

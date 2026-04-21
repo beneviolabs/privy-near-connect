@@ -196,7 +196,7 @@ function ActionCard({ receiverId, action }: { receiverId: string; action: Connec
         ))}
       </div>
       {footer ? <p className="pnc-action-card__footer">{footer}</p> : null}
-      {summary.argsJson ? (
+      {summary.paramsJson ? (
         <details className="pnc-action-card__details">
           <summary className="pnc-action-card__details-summary">
             <Text size="3" weight="medium">
@@ -204,7 +204,7 @@ function ActionCard({ receiverId, action }: { receiverId: string; action: Connec
             </Text>
             <ChevronDownIcon className="pnc-action-card__details-caret" width="16" height="16" />
           </summary>
-          <pre className="pnc-action-card__details-json">{summary.argsJson}</pre>
+          <pre className="pnc-action-card__details-json">{summary.paramsJson}</pre>
         </details>
       ) : null}
     </div>
@@ -241,7 +241,8 @@ function buildActionFooter(summary: ActionSummary): string | null {
   return parts.length > 0 ? parts.join('   ') : null;
 }
 
-function badgeTone(summary: ActionSummary): 'call' | 'transfer' | 'generic' {
+function badgeTone(summary: ActionSummary): 'call' | 'transfer' | 'generic' | 'caution' {
+  if (summary.category === 'caution') return 'caution';
   if (summary.category === 'call') return 'call';
   if (summary.category === 'transfer') return 'transfer';
   return 'generic';
