@@ -6,7 +6,6 @@ import { channelMsg, CHANNEL_SOURCE } from '@/types';
 import type { ChannelMsg, SignPageOptions, SignPageSession, SigningPayload } from '@/types';
 import { LOG_PREFIX } from '@/log';
 
-export { channelMsg } from '@/types';
 export type { SignPageOptions, SignPageSession } from '@/types';
 
 const DEFAULT_SIGN_REQUEST_TIMEOUT_MS = 30_000;
@@ -147,6 +146,7 @@ export const initSigningPage = async (
 
   return {
     payload,
+    targetOrigin,
     sign: buildSignFn(targetOrigin, privy, payload, options?.wallet, options?.rpcOptions),
   };
 };

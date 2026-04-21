@@ -23,7 +23,13 @@ export type PrivyNearWallet = LinkedAccountEmbeddedWallet & {
   address: string;
 };
 
-function isPrivyNearWallet(account: unknown): account is PrivyNearWallet {
+/**
+ * Narrows an unknown linked account to a Privy-managed NEAR wallet.
+ *
+ * @param account - Linked account metadata to validate.
+ * @returns `true` when the account is a wallet on the NEAR chain with the expected identifiers.
+ */
+export function isPrivyNearWallet(account: unknown): account is PrivyNearWallet {
   if (typeof account !== 'object' || account === null) return false;
 
   const typedAccount = account as {

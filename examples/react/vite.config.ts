@@ -3,6 +3,9 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    dedupe: ['react', 'react-dom', 'react/jsx-runtime'],
+  },
   server: {
     watch: {
       // Vite ignores node_modules by default — unignore the local package
