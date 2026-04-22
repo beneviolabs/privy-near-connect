@@ -25,9 +25,7 @@ export type SignPageProps = {
   options: SignPageOptions;
   /** Theme and outer-shell configuration for the signing page. */
   theme?: SignPageTheme;
-  /** If true, this component will close the popup window after a successful signature. Defaults to true. */
-  autoClose?: boolean;
-  /** Called when the user presses "Cancel" or "Reject". Defaults to reporting the cancellation to the opener and closing. */
+  /** Called when the user presses "Cancel" or "Reject". Defaults to closing the popup window. */
   onCancel?: () => void;
 };
 
@@ -58,7 +56,7 @@ type Status =
  * @returns The interactive signing page UI.
  */
 export function SignPagePlugin(props: SignPageProps) {
-  const { privy, options, theme, autoClose = true, onCancel } = props;
+  const { privy, options, theme, onCancel } = props;
   const accentColor = theme?.accentColor ?? 'violet';
   const grayColor = theme?.grayColor ?? 'slate';
   const radius = theme?.radius ?? 'medium';
@@ -96,7 +94,7 @@ export function SignPagePlugin(props: SignPageProps) {
       onCancel();
       return;
     }
-    if (autoClose) window.close();
+    window.close();
   };
 
   const rootClass = theme?.className ? `pnc-root ${theme.className}` : 'pnc-root';

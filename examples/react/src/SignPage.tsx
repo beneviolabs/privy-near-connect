@@ -14,7 +14,7 @@ export default function SignPage() {
   return (
     <SignPagePlugin
       privy={privy as unknown as SignPageProps['privy']}
-      options={{ allowedOrigins: 'all' }}
+      options={{ allowedOrigins: 'dangerouslyAllowAllOrigins' }}
     />
   );
 }

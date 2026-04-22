@@ -64,6 +64,8 @@ browser. This allows the sign page to auth during calls to Privy APIs for signin
     return (
       <div>
         <h1>Wanna sign this?</h1>
+        {/* Show the requesting origin so users can verify who is asking */}
+        <p>Requested by: <strong>{session?.targetOrigin}</strong></p>
         <pre>
           {JSON.stringify(session?.payload, null, 2)}
         </pre>
@@ -249,14 +251,15 @@ for `initSigningPage`, so developers must explicitly choose either a restrictive
 initSigningPage(privy, { allowedOrigins: ['https://dapp.example.com'] });
 ```
 
-To allow any origin, opt in explicitly:
+To allow any origin (e.g. for general-purpose wallets), opt in explicitly:
 
 ```ts
-initSigningPage(privy, { allowedOrigins: 'all' });
+initSigningPage(privy, { allowedOrigins: 'dangerouslyAllowAllOrigins' });
 ```
 
-`'all'` is convenient for development and demos, but most production deployments should use an
-explicit origin list to prevent a malicious window from sending an unexpected payload.
+`'dangerouslyAllowAllOrigins'` is appropriate for general-purpose wallets that accept requests
+from any dApp. Most single-dApp deployments should use an explicit origin list to prevent a
+malicious window from sending an unexpected payload.
 
 ## Deploying executor.js to the `release` branch
 

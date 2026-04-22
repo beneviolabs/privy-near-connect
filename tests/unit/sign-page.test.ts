@@ -179,9 +179,9 @@ describe('initSigningPage()', () => {
       expect(session.sign).toEqual(expect.any(Function));
     });
 
-    it('accepts SIGN_REQUEST from any origin when allowedOrigins is set to all', async () => {
+    it('accepts SIGN_REQUEST from any origin when allowedOrigins is dangerouslyAllowAllOrigins', async () => {
       mockOpener();
-      const promise = initSigningPage(mockPrivy(), { allowedOrigins: 'all' });
+      const promise = initSigningPage(mockPrivy(), { allowedOrigins: 'dangerouslyAllowAllOrigins' });
       await flushPrivyIframeLoad();
       dispatchSignRequest(TEST_PAYLOAD, 'https://any-origin.example.com');
 
@@ -254,7 +254,7 @@ describe('initSigningPage()', () => {
 
     it('locks targetOrigin to the first SIGN_REQUEST sender — later senders cannot hijack it', async () => {
       mockOpener();
-      const promise = initSigningPage(mockPrivy(), { allowedOrigins: 'all' });
+      const promise = initSigningPage(mockPrivy(), { allowedOrigins: 'dangerouslyAllowAllOrigins' });
       await flushPrivyIframeLoad();
 
       dispatchSignRequest(TEST_PAYLOAD, OPENER_ORIGIN);

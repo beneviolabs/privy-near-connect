@@ -74,7 +74,7 @@ function mountPrivyIframe(privy: Privy): Promise<() => void> {
 }
 
 function waitForOpenerSignRequest(
-  allowedOrigins: string[] | 'all',
+  allowedOrigins: string[] | 'dangerouslyAllowAllOrigins',
   timeout: number,
 ): Promise<{ payload: SigningPayload; targetOrigin: string }> {
   return new Promise((resolve, reject) => {
@@ -86,7 +86,7 @@ function waitForOpenerSignRequest(
     };
 
     const onMessage = (event: MessageEvent) => {
-      if (allowedOrigins !== 'all' && !allowedOrigins.includes(event.origin)) {
+      if (allowedOrigins !== 'dangerouslyAllowAllOrigins' && !allowedOrigins.includes(event.origin)) {
         console.debug(
           LOG_PREFIX,
           '✗ Ignoring message from disallowed origin',
@@ -122,7 +122,7 @@ function waitForOpenerSignRequest(
  * Sends `READY` to the opener with a wildcard target (`*`). Once a `SIGN_REQUEST`
  * arrives, its sender's origin becomes the exclusive `targetOrigin` used for all
  * subsequent messages. `allowedOrigins` must always be supplied explicitly:
- * either a concrete origin list or `'all'` to accept any origin.
+ * either a concrete origin list or `'dangerouslyAllowAllOrigins'` to accept any origin.
  *
  * @param privy - An instantiated and initialized Privy client.
  * @param options - Timeout, origin policy, and signing overrides.

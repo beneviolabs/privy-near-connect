@@ -123,8 +123,8 @@ export const channelMsg = {
 export type SignPageOptions = {
   /** Milliseconds to wait for `SIGN_REQUEST` before rejecting. */
   timeout?: number;
-  /** Origins from which a `SIGN_REQUEST` is accepted. Pass `'all'` to explicitly allow any origin. */
-  allowedOrigins: string[] | 'all';
+  /** Origins from which a `SIGN_REQUEST` is accepted. Pass `'dangerouslyAllowAllOrigins'` to explicitly allow any origin (e.g. for general-purpose wallets). */
+  allowedOrigins: string[] | 'dangerouslyAllowAllOrigins';
   /** Privy NEAR wallet to use during signing. If omitted, the wallet is fetched from `privy.user.get()` during signing. */
   wallet?: PrivyNearWallet;
   /** RPC connection options for signing payloads. Defaults to the public RPC for the payload's `network` value, or `mainnet` when `network` is omitted. */
