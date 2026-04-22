@@ -255,7 +255,9 @@ locks `trustedOrigin` to whoever sent it. This is safe for development but **pro
 deployments should always set `allowedOrigins`** to prevent a malicious opener from sending an
 unexpected payload.
 
-## Deploying executor.js to the `release` branch
+## RELEASE PROCESS
+
+### Deploying executor.js
 
 The `release` branch serves the compiled `executor.js` directly via GitHub's raw content URL:
 
@@ -270,6 +272,21 @@ The workflow in `.github/workflows/build-executor.yml` runs automatically on eve
 2. **Verify the artifact** is accessible at the raw URL above. It may take a few seconds after the workflow completes for GitHub's CDN to reflect the latest commit.
 
 > The `release` branch is machine-managed.
+
+## Publishing @peerfolio/privy-near-connect to npm
+
+Releases are managed with [Changesets](https://github.com/changesets/changesets). The process:
+
+1. **Include a changeset in your PR** describing what changed and whether it's a `patch`, `minor`, or `major` bump:
+   ```bash
+   npx changeset add
+   git add .changeset/ && git commit -m "changeset: <description>"
+   ```
+   The [changeset-bot](https://github.com/apps/changeset-bot) will comment on your PR if you forget.
+
+2. **After your PR merges to `main`**, the _Publish to npm_ workflow automatically opens (or updates) a **"Version Packages" PR** that bumps `package.json` and updates `CHANGELOG.md`.
+
+3. **Merge the "Version Packages" PR** when you're ready to cut a release. The workflow then runs `npm publish` with [provenance attestation](https://docs.npmjs.com/generating-provenance-statements), cryptographically linking the published tarball to the exact commit and workflow run.
 
 ## FAQ and Troubleshooting
 - You can copy the manifest in examples/react app and add it to https://azbang.github.io/near-connect/ to do cross-origin testing. Make sure it's being served already.
