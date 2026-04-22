@@ -33,7 +33,7 @@ function requestWallet<T>(signPageURL: string, payload: SigningPayload): Promise
     // Native `window.open()` won't work the same because the sandbox
     // proxies popups and messaging. This causes `event.origin` and
     // `event.source` to reflect the sandbox proxy window rather than the popup.
-    // We also rely on the uuid as nonce attached to sandbox messages.
+    // We also rely on sandbox guaranteed uuid to avoid cross-iframe spoofing.
     const popup = window.selector.open(signPageURL);
 
     const cleanup = () => {
