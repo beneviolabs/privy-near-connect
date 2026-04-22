@@ -325,7 +325,7 @@ describe('buildSignFn()', () => {
       TEST_TARGET,
     );
     expect(opener.postMessage).toHaveBeenCalledWith(
-      channelMsg.error('ServerError: signMessage failed'),
+      channelMsg.error({ type: 'ServerError', message: 'signMessage failed' }),
       TEST_TARGET,
     );
     expect(window.close).toHaveBeenCalled();

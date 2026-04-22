@@ -9,7 +9,7 @@ import {
 import { createProvider, AccountWithPrivySigner } from '@/signing/account';
 import type { PrivyConfig, RpcOptions } from '@/signing/account';
 import { channelMsg } from '@/types';
-import type { SigningPayload, SigningResult } from '@/types';
+import type { SigningError, SigningPayload, SigningResult } from '@/types';
 import { LOG_PREFIX } from '@/log';
 
 export type { RpcOptions } from '@/signing/account';
@@ -135,8 +135,10 @@ export function buildSignFn(
 function postSigningError(target: string, error: Error & { type?: string }) {
   if (!window.opener) return;
 
-  const message = `${error.type ?? error.name}: ${error.message}`;
-  const errorMsg = channelMsg.error(message);
+  const errorMsg = channelMsg.error({
+    type: error.type ?? error.name,
+    message: error.message,
+  });
 
   console.debug(LOG_PREFIX, '→ ERROR posted', errorMsg);
   window.opener.postMessage(errorMsg, target);

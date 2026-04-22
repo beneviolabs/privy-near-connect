@@ -61,7 +61,7 @@ function requestWallet<T>(signPageURL: string, payload: SigningPayload): Promise
         resolve(msg.result as T);
       } else if (msg.type === 'ERROR') {
         cleanup();
-        reject(new Error(msg.message));
+        reject(new Error(msg.error.message));
       }
     };
 

@@ -121,7 +121,7 @@ describe('requestWallet', () => {
       channelMsg.signRequest({ kind: 'signMessage', ...PARAMS }),
     );
 
-    send(channelMsg.error('cleanup'));
+    send(channelMsg.error({ message: 'cleanup', type: 'SigningError' }));
     await promise.catch(() => {});
   });
 
@@ -136,8 +136,23 @@ describe('requestWallet', () => {
   it('rejects with the message from ERROR', async () => {
     const promise = wallet.signMessage(PARAMS);
     sendReady();
-    send(channelMsg.error('user rejected'));
+    send(channelMsg.error({ message: 'user rejected', type: 'SigningError' }));
     await expect(promise).rejects.toThrow('user rejected');
+  });
+
+  it('rejects with the structured ERROR type attached', async () => {
+    const promise = wallet.signMessage(PARAMS);
+    sendReady();
+    send(
+      channelMsg.error({ message: 'rpc failed', type: 'ServerError', payload: { cause: 'boom' } }),
+    );
+
+    await expect(promise).rejects.toMatchObject({
+      message: 'rpc failed',
+      name: 'ServerError',
+      type: 'ServerError',
+      payload: { cause: 'boom' },
+    });
   });
 
   it('rejects when popup closes before a result arrives', async () => {
@@ -160,7 +175,7 @@ describe('requestWallet', () => {
     // Clean up
     sendReady();
     await Promise.resolve();
-    send(channelMsg.error('cleanup'));
+    send(channelMsg.error({ message: 'cleanup', type: 'SigningError' }));
     await promise.catch(() => {});
   });
 });
