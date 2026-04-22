@@ -288,6 +288,8 @@ Releases are managed with [Changesets](https://github.com/changesets/changesets)
 
 3. **Merge the "Version Packages" PR** when you're ready to cut a release. The workflow then runs `npm publish` with [provenance attestation](https://docs.npmjs.com/generating-provenance-statements), cryptographically linking the published tarball to the exact commit and workflow run.
 
+> **One-time setup:** configure [npm trusted publishing](https://docs.npmjs.com/generating-provenance-statements#using-third-party-package-publishing-tools) for this package on npmjs.com so the workflow can publish via OIDC without a stored token.
+
 ## FAQ and Troubleshooting
 - You can copy the manifest in examples/react app and add it to https://azbang.github.io/near-connect/ to do cross-origin testing. Make sure it's being served already.
 - If you run into `Uncaught (in promise) Permission denied` error when launching the signing page or elsewhere it most likely is related to window opening so check the origin being specified and cross-origin access.

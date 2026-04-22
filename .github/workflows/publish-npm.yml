@@ -48,10 +48,6 @@ jobs:
           commit: "chore: version packages"
           title: "chore: version packages"
           setupGitUser: false
-        env:
-          GITHUB_TOKEN: ${{ steps.deploy-token.outputs.token }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          npm_config_provenance: "true"
 
       - name: Update Release PR title with version
         if: steps.changesets.outputs.pullRequestNumber != ''

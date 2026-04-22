@@ -1,6 +1,6 @@
 {
   "name": "@peerfolio/privy-near-connect",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Privy wallet adapter for near-connect",
   "license": "MIT",
   "type": "module",
