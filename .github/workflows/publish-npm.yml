@@ -73,14 +73,26 @@ jobs:
             echo "bumped=false" >> $GITHUB_OUTPUT
           fi
 
+      - name: Build release notification
+        id: msg
+        if: steps.version-bump.outputs.bumped == 'true'
+        run: |
+          VERSION="${{ steps.version-bump.outputs.version }}"
+          PR_NUMBER="${{ steps.changesets.outputs.pullRequestNumber }}"
+          CHANGELOG=$(awk "/^## ${VERSION}$/{found=1;next} found && /^## /{exit} found{print}" CHANGELOG.md | sed '/^[[:space:]]*$/d')
+          {
+            echo "message<<EOF"
+            echo "privy-near-connect v${VERSION} published to npm"
+            echo "https://www.npmjs.com/package/@peerfolio/privy-near-connect/v/${VERSION}"
+            [ -n "$PR_NUMBER" ] && echo "https://github.com/${{ github.repository }}/pull/${PR_NUMBER}"
+            [ -n "$CHANGELOG" ] && echo "" && echo "${CHANGELOG}"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+
       - name: Notify Telegram — published to npm
         if: steps.version-bump.outputs.bumped == 'true'
         uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_TO }}
           token: ${{ secrets.TELEGRAM_TOKEN }}
-          format: markdown
-          message: |
-            *privy-near-connect* published to npm
-            Version: `${{ steps.version-bump.outputs.version }}`
-            https://www.npmjs.com/package/@peerfolio/privy-near-connect/v/${{ steps.version-bump.outputs.version }}
+          message: ${{ steps.msg.outputs.message }}

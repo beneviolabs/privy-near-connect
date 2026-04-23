@@ -65,7 +65,7 @@ async function getUserNearWallet(privy: Privy): Promise<PrivyNearWallet> {
  * @param payload - Payload received from opener via `SIGN_REQUEST`.
  * @param wallet - Optional preselected Privy NEAR wallet metadata. When omitted, the wallet is fetched from `privy.user.get()` during signing.
  * @param rpcOptions - Optional RPC connection options forwarded to transaction signing.
- * @returns An async signer callback that signs the payload, posts `RESULT`, and closes the popup.
+ * @returns An async signer callback that signs the payload, posts either `RESULT` or `ERROR`, and closes the popup when finished.
  * @throws {@link WindowOpenerClosedError} If `window.opener` is no longer available when the returned signer runs.
  * @throws {@link UnsupportedSigningPayloadError} If the payload is not a supported signer request.
  * @throws {@link NoNearWalletError} If no linked NEAR wallet is available and no `wallet` was provided.
@@ -79,47 +79,67 @@ export function buildSignFn(
   rpcOptions?: RpcOptions,
 ): () => Promise<void> {
   return async () => {
-    console.debug(LOG_PREFIX, '→ sign() start', { target, kind: payload.kind });
-    if (!window.opener) throw new WindowOpenerClosedError();
-    if (typeof payload !== 'object' || payload === null || !('kind' in payload)) {
-      throw new UnsupportedSigningPayloadError();
-    }
+    try {
+      console.debug(LOG_PREFIX, '→ sign() start', { target, kind: payload.kind });
+      if (!window.opener) throw new WindowOpenerClosedError();
 
-    const walletToUse = wallet ?? (await getUserNearWallet(privy));
-    const walletConfig: PrivyConfig = {
-      privyClient: privy,
-      wallet: walletToUse,
-    };
-    const network = 'network' in payload ? payload.network : undefined;
-    const account = new AccountWithPrivySigner(walletConfig, createProvider(network, rpcOptions));
-
-    let result: SigningResult;
-    switch (payload.kind) {
-      case 'signIn':
-        result = await account.ncSignIn(payload);
-        break;
-      case 'signInAndSignMessage':
-        result = await account.ncSignInAndSignMessage(payload);
-        break;
-      case 'signMessage':
-        result = await account.ncSignMessage(payload);
-        break;
-      case 'signAndSendTransaction':
-        result = (await account.signAndSendTransaction(payload)) as unknown as SigningResult;
-        break;
-      case 'signAndSendTransactions':
-        result = (await account.signAndSendTransactions(payload)) as unknown as SigningResult;
-        break;
-      case 'signDelegateActions':
-        result = await account.ncSignDelegateActions(payload);
-        break;
-      default:
+      if (typeof payload !== 'object' || payload === null || !('kind' in payload)) {
         throw new UnsupportedSigningPayloadError();
-    }
+      }
 
-    const resultMsg = channelMsg.result(result);
-    console.debug(LOG_PREFIX, '→ RESULT posted', resultMsg);
-    (window.opener as Window).postMessage(resultMsg, target);
-    window.close();
+      const walletToUse = wallet ?? (await getUserNearWallet(privy));
+      const walletConfig: PrivyConfig = {
+        privyClient: privy,
+        wallet: walletToUse,
+      };
+      const network = 'network' in payload ? payload.network : undefined;
+      const account = new AccountWithPrivySigner(walletConfig, createProvider(network, rpcOptions));
+
+      let result: SigningResult;
+      switch (payload.kind) {
+        case 'signIn':
+          result = await account.ncSignIn(payload);
+          break;
+        case 'signInAndSignMessage':
+          result = await account.ncSignInAndSignMessage(payload);
+          break;
+        case 'signMessage':
+          result = await account.ncSignMessage(payload);
+          break;
+        case 'signAndSendTransaction':
+          result = (await account.signAndSendTransaction(payload)) as unknown as SigningResult;
+          break;
+        case 'signAndSendTransactions':
+          result = (await account.signAndSendTransactions(payload)) as unknown as SigningResult;
+          break;
+        case 'signDelegateActions':
+          result = await account.ncSignDelegateActions(payload);
+          break;
+        default:
+          throw new UnsupportedSigningPayloadError();
+      }
+
+      const resultMsg = channelMsg.result(result);
+      console.debug(LOG_PREFIX, '→ RESULT posted', resultMsg);
+      window.opener.postMessage(resultMsg, target);
+    } catch (error) {
+      const signingError = error as Error & { type?: string };
+      postSigningError(target, signingError);
+      throw signingError;
+    } finally {
+      window.close();
+    }
   };
+}
+
+function postSigningError(target: string, error: Error & { type?: string }) {
+  if (!window.opener) return;
+
+  const errorMsg = channelMsg.error({
+    type: error.type ?? error.name,
+    message: error.message,
+  });
+
+  console.debug(LOG_PREFIX, '→ ERROR posted', errorMsg);
+  window.opener.postMessage(errorMsg, target);
 }

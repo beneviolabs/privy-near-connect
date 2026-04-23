@@ -61,6 +61,14 @@ export type SigningResult =
   | AccountWithSignedMessage[]
   | void;
 
+/** Structured error returned by the sign page when signing fails. */
+export type SigningError = {
+  message: string;
+  type?: string;
+  /** Optional extra error payload for richer failures. */
+  payload?: unknown;
+};
+
 /** Identifies all messages originating from this library. */
 export const CHANNEL_SOURCE = 'privy-near-connect' as const;
 
@@ -69,7 +77,7 @@ export type ChannelMsg = { source: typeof CHANNEL_SOURCE } & (
   | { type: 'READY' }
   | { type: 'SIGN_REQUEST'; payload: SigningPayload }
   | { type: 'RESULT'; result: SigningResult }
-  | { type: 'ERROR'; message: string }
+  | { type: 'ERROR'; error: SigningError }
 );
 
 /** Constructors for {@link ChannelMsg} variants. Each stamps `source` automatically. */
@@ -101,13 +109,13 @@ export const channelMsg = {
   }),
   /**
    * Builds an `ERROR` message.
-   * @param message - Human-readable error description.
+   * @param error - Structured signing error.
    * @returns An `ERROR` message.
    */
-  error: (message: string): ChannelMsg => ({
+  error: (error: SigningError): ChannelMsg => ({
     source: CHANNEL_SOURCE,
     type: 'ERROR',
-    message,
+    error,
   }),
 };
 
@@ -115,8 +123,8 @@ export const channelMsg = {
 export type SignPageOptions = {
   /** Milliseconds to wait for `SIGN_REQUEST` before rejecting. */
   timeout?: number;
-  /** Allowlist of origins from which a `SIGN_REQUEST` is accepted. When set, only messages from these origins are allowed. */
-  allowedOrigins?: string[];
+  /** Origins from which a `SIGN_REQUEST` is accepted. Pass `'dangerouslyAllowAllOrigins'` to explicitly allow any origin (e.g. for general-purpose wallets). */
+  allowedOrigins: string[] | 'dangerouslyAllowAllOrigins';
   /** Privy NEAR wallet to use during signing. If omitted, the wallet is fetched from `privy.user.get()` during signing. */
   wallet?: PrivyNearWallet;
   /** RPC connection options for signing payloads. Defaults to the public RPC for the payload's `network` value, or `mainnet` when `network` is omitted. */

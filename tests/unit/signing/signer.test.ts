@@ -313,9 +313,10 @@ describe('buildSignFn()', () => {
     await expect(sign()).rejects.toBeInstanceOf(NoNearWalletError);
   });
 
-  it('propagates signMessage failures without posting RESULT or closing the window', async () => {
+  it('propagates RPC signMessage failures, posts the RPC error type, and closes the window', async () => {
     const opener = mockOpener();
-    mockAccountInstance.ncSignMessage.mockRejectedValue(new Error('signMessage failed'));
+    const rpcError = Object.assign(new Error('signMessage failed'), { type: 'ServerError' });
+    mockAccountInstance.ncSignMessage.mockRejectedValue(rpcError);
     const sign = buildSignFn(TEST_TARGET, mockPrivy(), TEST_PAYLOAD, TEST_WALLET);
 
     await expect(sign()).rejects.toThrow('signMessage failed');
@@ -323,6 +324,10 @@ describe('buildSignFn()', () => {
       expect.objectContaining({ type: 'RESULT' }),
       TEST_TARGET,
     );
-    expect(window.close).not.toHaveBeenCalled();
+    expect(opener.postMessage).toHaveBeenCalledWith(
+      channelMsg.error({ type: 'ServerError', message: 'signMessage failed' }),
+      TEST_TARGET,
+    );
+    expect(window.close).toHaveBeenCalled();
   });
 });

@@ -96,7 +96,7 @@ Releases are managed with [Changesets](https://github.com/changesets/changesets)
 
 1. **Include a changeset in a PR** describing what changed and whether it's a `patch`, `minor`, or `major` bump:
    ```bash
-   npx changeset add
+   npm run changeset
    git add .changeset/ && git commit -m "changeset: <description>"
    ```
    The [changeset-bot](https://github.com/apps/changeset-bot) will comment on the PR if you forget.

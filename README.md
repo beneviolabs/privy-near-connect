@@ -62,13 +62,14 @@ browser. This allows the sign page to auth during calls to Privy APIs for signin
 
     let session;
 
-    // allowedOrigins restricts which dApp origins may send a SIGN_REQUEST to this page
-    // You may also specify the wallet to be used for signing here if a user has multiple wallets in their Privy account. Check the jsdocs for details.
+    // You may also specify the wallet to be used for signing here if a user has multiple wallets in their Privy account. Check the jsdoc for this function for details.
     initSigningPage(privyClient, { allowedOrigins: ['https://yourdapp.example.com'] }).then((s) => { session = s });
 
     return (
       <div>
         <h1>Wanna sign this?</h1>
+        {/* Show the requesting origin so users can verify who is asking */}
+        <p>Requested by: <strong>{session?.targetOrigin}</strong></p>
         <pre>
           {JSON.stringify(session?.payload, null, 2)}
         </pre>
@@ -89,7 +90,7 @@ browser. This allows the sign page to auth during calls to Privy APIs for signin
 
   export default function SignPage() {
     ...
-    return <SignPagePlugin privy={privyClient} />;
+    return <SignPagePlugin privy={privyClient} options={{ allowedOrigins: ['https://yourdapp.example.com'] }} />;
   }
   ```
 
@@ -194,16 +195,22 @@ sequenceDiagram
   Note over E: resolves promise
 ```
 
+
 ### Cross-origin support
 
-The signing page can be hosted on a different origin from the dApp. Pass `allowedOrigins` to
-`initSigningPage` to restrict which origins may send a `SIGN_REQUEST`:
+The signing page may be hosted on a different origin from the dApp. `allowedOrigins` is required
+for `initSigningPage`, so developers must explicitly choose either a restrictive allowlist or every domain:
 
 ```ts
 initSigningPage(privy, { allowedOrigins: ['https://dapp.example.com'] });
 ```
 
-When `allowedOrigins` is omitted, the sign page accepts a `SIGN_REQUEST` from any origin and
-locks `trustedOrigin` to whoever sent it. This is safe for development but **production
-deployments should always set `allowedOrigins`** to prevent a malicious opener from sending an
-unexpected payload.
+Or to allow any origin (e.g. for general-purpose wallets), opt in explicitly:
+
+```ts
+initSigningPage(privy, { allowedOrigins: 'dangerouslyAllowAllOrigins' });
+```
+
+`'dangerouslyAllowAllOrigins'` is appropriate for general-purpose wallets that accept requests
+from any dApp. Most single-dApp deployments should use an explicit origin list to prevent a
+malicious window from sending an unexpected payload.

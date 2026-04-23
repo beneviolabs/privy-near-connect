@@ -6,6 +6,16 @@ export class NoOpenerError extends Error {
   }
 }
 
+/** Thrown when `initSigningPage` is called without an explicit `allowedOrigins` policy. */
+export class MissingAllowedOriginsError extends Error {
+  constructor() {
+    super(
+      "allowedOrigins is required — pass an explicit origin list or 'dangerouslyAllowAllOrigins'",
+    );
+    this.name = 'MissingAllowedOriginsError';
+  }
+}
+
 /** Thrown when `allowedOrigins` contains a wildcard entry (`'*'`). */
 export class WildcardOriginError extends Error {
   constructor() {
