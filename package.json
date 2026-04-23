@@ -49,7 +49,6 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
-    "prepublishOnly": "npm run build",
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release": "changeset publish"
