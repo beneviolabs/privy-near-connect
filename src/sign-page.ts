@@ -86,7 +86,10 @@ function waitForOpenerSignRequest(
     };
 
     const onMessage = (event: MessageEvent) => {
-      if (allowedOrigins !== 'dangerouslyAllowAllOrigins' && !allowedOrigins.includes(event.origin)) {
+      if (
+        allowedOrigins !== 'dangerouslyAllowAllOrigins' &&
+        !allowedOrigins.includes(event.origin)
+      ) {
         console.debug(
           LOG_PREFIX,
           '✗ Ignoring message from disallowed origin',
