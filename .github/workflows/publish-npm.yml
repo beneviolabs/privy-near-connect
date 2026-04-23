@@ -42,7 +42,7 @@ jobs:
           git config user.email "peerfolio-deploy-bot@users.noreply.github.com"
           git remote set-url origin https://x-access-token:${APP_TOKEN}@github.com/beneviolabs/privy-near-connect.git
 
-      - name: Create Release PR
+      - name: Create Release PR or Publish
         id: changesets
         uses: changesets/action@v1
         with:
@@ -52,6 +52,7 @@ jobs:
           setupGitUser: false
         env:
           GITHUB_TOKEN: ${{ steps.deploy-token.outputs.token }}
+          npm_config_provenance: "true"
 
       - name: Update Release PR title with version
         if: steps.changesets.outputs.pullRequestNumber != ''
