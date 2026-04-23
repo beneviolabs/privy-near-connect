@@ -81,6 +81,6 @@ jobs:
           token: ${{ secrets.TELEGRAM_TOKEN }}
           format: markdown
           message: |
-            *privy\-near\-connect* published to npm
+            *privy-near-connect* published to npm
             Version: `${{ steps.version-bump.outputs.version }}`
-            https://www\.npmjs\.com/package/@peerfolio/privy\-near\-connect
+            https://www.npmjs.com/package/@peerfolio/privy-near-connect/v/${{ steps.version-bump.outputs.version }}
