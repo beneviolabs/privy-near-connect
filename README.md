@@ -5,6 +5,10 @@ This SDK enables developer's to set up their own NEAR wallet on top of [Privy's 
 While most of the examples from this library use React, the library is framework-agnostic.
 An [example React app](./examples/react/) is also included to demonstrate usage of the sign page plugin. It is hosted [here](https://beneviolabs.github.io/privy-near-connect/) but note that you need to plug in your own Privy credentials to work it.
 
+## Contributing
+
+For development setup, release process, and troubleshooting see [CONTRIBUTING.md](./CONTRIBUTING.md).
+
 ## Getting Started
 
 1. Install `@peerfolio/privy-near-connect` NPM package into your project
@@ -168,57 +172,6 @@ This page will be opened in a popup by the near-connect SDK when a signing reque
   const result = await w.signAndSendTransaction({...txn});
   ```
 
-## Development
-
-```bash
-npm install
-npm run test
-```
-
-### Running the example app
-
-The React example in [examples/react](examples/react) provides a simple sign-message UI.
-
-1. Run the library in continuous build and watch mode in one terminal:
-
-```bash
-npm run build-serve:watch
-```
-
-It serves the executor.js file at localhost:8001, which allows the Near Connector
-to fetch the executor code from your local.
-This executor URL is already configured in the example app's manifest.json.
-
-2. Then run the example app in another terminal:
-
-```bash
-cd examples/react
-npm install
-npm run dev
-```
-
-3. Open the app at http://localhost:5173.
-
-### Linking near-connect lib
-If you're making simultaneous changes to the near-connect lib locally and want to link this repo's
-node modules, you can run
-
-```sh
-# from root of hot-labs/near-connect repo
-yarn build
-cd $DIR/privy-near-connect && \
-npm link $DIR/near-connect && \
-cd examples/react && \
-npm link $DIR/near-connect
-```
-
-And later to unlink:
-```sh
-npm unlink @hot-labs/near-connect --no-save && \
-cd examples/react && \
-npm unlink @hot-labs/near-connect --no-save
-```
-
 ## Architecture
 
 ### Message flow
@@ -254,23 +207,3 @@ When `allowedOrigins` is omitted, the sign page accepts a `SIGN_REQUEST` from an
 locks `trustedOrigin` to whoever sent it. This is safe for development but **production
 deployments should always set `allowedOrigins`** to prevent a malicious opener from sending an
 unexpected payload.
-
-## Deploying executor.js to the `release` branch
-
-The `release` branch serves the compiled `executor.js` directly via GitHub's raw content URL:
-
-```
-https://raw.githubusercontent.com/beneviolabs/privy-near-connect/refs/heads/release/executor.js
-```
-
-The workflow in `.github/workflows/build-executor.yml` runs automatically on every push to `main`. To trigger it:
-
-1. **Merge to `main`** (or trigger manually via _Actions → Build and publish executor.js to release branch → Run workflow_). The workflow will build executor.js and commit it to the `release` branch.
-
-2. **Verify the artifact** is accessible at the raw URL above. It may take a few seconds after the workflow completes for GitHub's CDN to reflect the latest commit.
-
-> The `release` branch is machine-managed.
-
-## FAQ and Troubleshooting
-- You can copy the manifest in examples/react app and add it to https://azbang.github.io/near-connect/ to do cross-origin testing. Make sure it's being served already.
-- If you run into `Uncaught (in promise) Permission denied` error when launching the signing page or elsewhere it most likely is related to window opening so check the origin being specified and cross-origin access.

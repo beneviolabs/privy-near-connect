@@ -1,6 +1,6 @@
 {
   "name": "@peerfolio/privy-near-connect",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Privy wallet adapter for near-connect",
   "license": "MIT",
   "type": "module",
@@ -49,9 +49,12 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
-    "prepublishOnly": "npm run build"
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "changeset publish"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.31.0",
     "@eslint/js": "^10.0.1",
     "@radix-ui/react-collapsible": "^1.1.12",
     "@radix-ui/react-icons": "^1.3.2",
