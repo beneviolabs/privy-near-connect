@@ -60,7 +60,7 @@ jobs:
           GH_TOKEN: ${{ steps.deploy-token.outputs.token }}
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          gh pr edit "${{ steps.changesets.outputs.pullRequestNumber }}" --title "chore: release v${VERSION}"
+          gh pr edit "${{ steps.changesets.outputs.pullRequestNumber }}" --title "chore: release @peerfolio/privy-near-connect v${VERSION}"
 
       - name: Read published version
         if: steps.changesets.outputs.published == 'true'
