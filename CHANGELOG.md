@@ -1,6 +1,8 @@
----
-'@peerfolio/privy-near-connect': patch
----
+# @peerfolio/privy-near-connect
+
+## 0.0.2
+
+### Patch Changes
 
 - Make allowedOrigins a mandatory argument.
 - Use better error payload structure in channelMsg

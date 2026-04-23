@@ -1,15 +1,15 @@
-name: Publish to npm
+name: privy-near-connect publisher
 
 on:
   push:
-    branches: [main, auto-publish-npm]
+    branches: [main]
   workflow_dispatch:
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
   release:
-    name: Release
+    name: Create PR or Publish
     runs-on: ubuntu-latest
     permissions:
       contents: write       # push version commits + create GitHub releases
@@ -60,37 +60,34 @@ jobs:
           GH_TOKEN: ${{ steps.deploy-token.outputs.token }}
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          gh pr edit "${{ steps.changesets.outputs.pullRequestNumber }}" --title "chore: release v${VERSION}"
+          gh pr edit "${{ steps.changesets.outputs.pullRequestNumber }}" --title "chore: release @peerfolio/privy-near-connect v${VERSION}"
 
-      - name: Check for version bump
-        id: version-bump
+      - name: Read published version
+        if: steps.changesets.outputs.published == 'true'
+        id: published-version
+        env:
+          PUBLISHED_PACKAGES: ${{ steps.changesets.outputs.publishedPackages }}
         run: |
-          CURRENT=$(jq -r '.version' package.json)
-          if [ "${{ steps.changesets.outputs.hasChangesets }}" = "true" ]; then
-            echo "bumped=true" >> $GITHUB_OUTPUT
-            echo "version=$CURRENT" >> $GITHUB_OUTPUT
-          else
-            echo "bumped=false" >> $GITHUB_OUTPUT
-          fi
+          VERSION=$(node -e "const packages = JSON.parse(process.env.PUBLISHED_PACKAGES || '[]'); const pkg = packages.find((entry) => entry.name === '@peerfolio/privy-near-connect') ?? packages[0]; if (!pkg?.version) { throw new Error('Missing published package version'); } process.stdout.write(pkg.version);")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Build release notification
         id: msg
-        if: steps.version-bump.outputs.bumped == 'true'
+        if: steps.changesets.outputs.published == 'true'
         run: |
-          VERSION="${{ steps.version-bump.outputs.version }}"
+          VERSION="${{ steps.published-version.outputs.version }}"
           PR_NUMBER="${{ steps.changesets.outputs.pullRequestNumber }}"
           CHANGELOG=$(awk "/^## ${VERSION}$/{found=1;next} found && /^## /{exit} found{print}" CHANGELOG.md | sed '/^[[:space:]]*$/d')
           {
             echo "message<<EOF"
-            echo "privy-near-connect v${VERSION} published to npm"
-            echo "https://www.npmjs.com/package/@peerfolio/privy-near-connect/v/${VERSION}"
-            [ -n "$PR_NUMBER" ] && echo "https://github.com/${{ github.repository }}/pull/${PR_NUMBER}"
+            echo "[privy-near-connect v${VERSION}](https://www.npmjs.com/package/@peerfolio/privy-near-connect/v/${VERSION}) published to npm"
+            [ -n "$PR_NUMBER" ] && echo "PR: https://github.com/${{ github.repository }}/pull/${PR_NUMBER}"
             [ -n "$CHANGELOG" ] && echo "" && echo "${CHANGELOG}"
             echo "EOF"
           } >> $GITHUB_OUTPUT
 
       - name: Notify Telegram — published to npm
-        if: steps.version-bump.outputs.bumped == 'true'
+        if: steps.changesets.outputs.published == 'true'
         uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_TO }}
