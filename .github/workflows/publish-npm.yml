@@ -1,4 +1,4 @@
-name: privy-near-connect publisher
+name: privy-near-connect npm publisher
 
 on:
   push:
@@ -46,6 +46,7 @@ jobs:
         id: changesets
         uses: changesets/action@v1
         with:
+          publish: npm run release
           version: npm run version-packages
           commit: "chore: version packages"
           title: "chore: version packages"
