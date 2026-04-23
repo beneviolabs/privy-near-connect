@@ -27,11 +27,6 @@ jobs:
 
       - run: npm ci
 
-      - name: Build
-        run: npm run build
-        env:
-          NODE_ENV: production
-
       - name: Generate deploy token
         id: deploy-token
         uses: actions/create-github-app-token@v3
@@ -39,15 +34,24 @@ jobs:
           app-id: ${{ vars.DEPLOY_APP_ID }}
           private-key: ${{ secrets.DEPLOY_APP_PRIVATE_KEY }}
 
-      - name: Create Release PR or Publish
+      - name: Configure git
+        env:
+          APP_TOKEN: ${{ steps.deploy-token.outputs.token }}
+        run: |
+          git config user.name "peerfolio-deploy-bot"
+          git config user.email "peerfolio-deploy-bot@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${APP_TOKEN}@github.com/beneviolabs/privy-near-connect.git
+
+      - name: Create Release PR
         id: changesets
         uses: changesets/action@v1
         with:
-          publish: npm run release
           version: npm run version-packages
           commit: "chore: version packages"
           title: "chore: version packages"
           setupGitUser: false
+        env:
+          GITHUB_TOKEN: ${{ steps.deploy-token.outputs.token }}
 
       - name: Update Release PR title with version
         if: steps.changesets.outputs.pullRequestNumber != ''
@@ -57,8 +61,20 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           gh pr edit "${{ steps.changesets.outputs.pullRequestNumber }}" --title "chore: release v${VERSION}"
 
+      - name: Check for version bump
+        id: version-bump
+        run: |
+          CURRENT=$(jq -r '.version' package.json)
+          PREVIOUS=$(git show HEAD~1:package.json | jq -r '.version')
+          if [ "$CURRENT" != "$PREVIOUS" ]; then
+            echo "bumped=true" >> $GITHUB_OUTPUT
+            echo "version=$CURRENT" >> $GITHUB_OUTPUT
+          else
+            echo "bumped=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Notify Telegram — published to npm
-        if: steps.changesets.outputs.published == 'true'
+        if: steps.version-bump.outputs.bumped == 'true'
         uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_TO }}
@@ -66,5 +82,5 @@ jobs:
           format: markdown
           message: |
             *privy\-near\-connect* published to npm
-            Version: `${{ fromJson(steps.changesets.outputs.publishedPackages)[0].version }}`
+            Version: `${{ steps.version-bump.outputs.version }}`
             https://www\.npmjs\.com/package/@peerfolio/privy\-near\-connect
