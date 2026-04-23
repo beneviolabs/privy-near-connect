@@ -28,13 +28,13 @@ var channelMsg = {
   }),
   /**
    * Builds an `ERROR` message.
-   * @param message - Human-readable error description.
+   * @param error - Structured signing error.
    * @returns An `ERROR` message.
    */
-  error: (message) => ({
+  error: (error) => ({
     source: CHANNEL_SOURCE,
     type: "ERROR",
-    message
+    error
   })
 };
 
@@ -66,7 +66,13 @@ function requestWallet(signPageURL, payload) {
         resolve(msg.result);
       } else if (msg.type === "ERROR") {
         cleanup();
-        reject(new Error(msg.message));
+        reject(
+          Object.assign(new Error(msg.error.message), {
+            name: msg.error.type,
+            type: msg.error.type,
+            payload: msg.error.payload
+          })
+        );
       }
     };
     const closedPoll = setInterval(() => {
