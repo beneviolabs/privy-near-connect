@@ -1,6 +1,10 @@
 // @vitest-environment happy-dom
 import { beforeAll, beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
-import type { Account, NearWalletBase, WalletManifest} from '@hot-labs/near-connect/build/types/index.js';
+import type {
+  Account,
+  NearWalletBase,
+  WalletManifest,
+} from '@hot-labs/near-connect/build/types/index.js';
 import { channelMsg, type ChannelMsg } from '@/types';
 import type { FinalExecutionOutcome } from '@near-js/types';
 
@@ -43,7 +47,6 @@ type WalletManifestwithMetadata = WalletManifest & {
     signPageURL: string;
   };
 };
-
 
 let wallet: NearWalletBase;
 let mockWindowOpen: ReturnType<typeof vi.fn>;
