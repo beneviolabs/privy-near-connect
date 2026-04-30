@@ -49,6 +49,10 @@ jobs:
           VITE_PRIVY_APP_ID: ${{ vars.VITE_PRIVY_APP_ID }}
           VITE_PRIVY_APP_CLIENT_ID: ${{ vars.VITE_PRIVY_APP_CLIENT_ID }}
 
+      - name: Set GitHub Pages sign page URL in manifest
+        run: |
+          node -e "const fs = require('node:fs'); const path = 'examples/react/dist/manifest.json'; const manifest = JSON.parse(fs.readFileSync(path, 'utf8')); const wallet = manifest.wallets?.find((entry) => entry.id === 'myprivywallet'); if (!wallet?.metadata) { throw new Error('myprivywallet metadata is missing from manifest.json'); } wallet.metadata.signPageURL = 'https://beneviolabs.github.io/privy-near-connect/#privy-sign'; fs.writeFileSync(path, JSON.stringify(manifest, null, 2) + '\n');"
+
       - name: Setup Pages
         uses: actions/configure-pages@v6
 
