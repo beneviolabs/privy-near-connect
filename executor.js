@@ -146,12 +146,6 @@ var wallet = {
     });
   }
 };
-var SIGN_PAGE_URL = new URL("#privy-sign", "http://localhost:5173").href;
-wallet.manifest = {
-  metadata: {
-    signPageURL: SIGN_PAGE_URL
-  }
-};
 window.selector.ready(wallet);
 //# sourceMappingURL=executor.js.map
 //# sourceMappingURL=executor.js.map
