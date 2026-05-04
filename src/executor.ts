@@ -168,10 +168,4 @@ const wallet: NearWalletBase & { manifest: WalletManifestwithMetadata } = {
   },
 };
 
-const SIGN_PAGE_URL = new URL('#privy-sign', 'http://localhost:5173').href;
-wallet.manifest = {
-  metadata: {
-    signPageURL: SIGN_PAGE_URL,
-  },
-} as WalletManifestwithMetadata;
 window.selector.ready(wallet);

@@ -1,6 +1,10 @@
 // @vitest-environment happy-dom
-import { beforeAll, afterEach, describe, expect, it, vi } from 'vitest';
-import type { Account, NearWalletBase } from '@hot-labs/near-connect/build/types/index.js';
+import { beforeAll, beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
+import type {
+  Account,
+  NearWalletBase,
+  WalletManifest,
+} from '@hot-labs/near-connect/build/types/index.js';
 import { channelMsg, type ChannelMsg } from '@/types';
 import type { FinalExecutionOutcome } from '@near-js/types';
 
@@ -38,6 +42,12 @@ function sendReady() {
 
 // ---- setup -------------------------------------------------------
 
+type WalletManifestwithMetadata = WalletManifest & {
+  metadata: {
+    signPageURL: string;
+  };
+};
+
 let wallet: NearWalletBase;
 let mockWindowOpen: ReturnType<typeof vi.fn>;
 let popup: FakePopup;
@@ -46,6 +56,7 @@ let mockStorageSet: ReturnType<typeof vi.fn>;
 let mockStorageRemove: ReturnType<typeof vi.fn>;
 
 const TEST_ACCOUNT_ID = '718c0ad670786cc74ed01f50c063361531b42417f78d04f691b9c8e21923c5d8';
+const TEST_SIGN_PAGE_URL = new URL('#privy-sign', 'http://localhost:5173').href;
 const TEST_ACCOUNT: Account = {
   accountId: TEST_ACCOUNT_ID,
 };
@@ -82,12 +93,20 @@ beforeAll(async () => {
   await import('@/executor');
 });
 
-afterEach(() => {
-  vi.clearAllMocks();
-  vi.useRealTimers();
+beforeEach(() => {
   // Fresh popup for next test.
   popup = makePopup();
   mockWindowOpen.mockReturnValue(popup);
+  wallet.manifest = {
+    metadata: {
+      signPageURL: TEST_SIGN_PAGE_URL,
+    },
+  } as WalletManifestwithMetadata;
+});
+
+afterEach(() => {
+  vi.clearAllMocks();
+  vi.useRealTimers();
 });
 
 // ---- tests -------------------------------------------------------
@@ -107,9 +126,7 @@ describe('requestWallet', () => {
 
   it('opens the sign page popup', () => {
     wallet.signMessage(PARAMS).catch(() => {});
-    expect(mockWindowOpen).toHaveBeenCalledWith(
-      new URL('#privy-sign', 'http://localhost:5173').href,
-    );
+    expect(mockWindowOpen).toHaveBeenCalledWith(TEST_SIGN_PAGE_URL);
   });
 
   it('posts SIGN_REQUEST to the popup on READY', async () => {
