@@ -18,7 +18,7 @@ import {
 type ActionStatus = 'idle' | 'pending' | 'done' | 'error';
 
 const connector = new NearConnector({
-  manifest: '/manifest.json',
+  manifest: `${import.meta.env.BASE_URL}manifest.json`,
   network: 'mainnet',
 });
 

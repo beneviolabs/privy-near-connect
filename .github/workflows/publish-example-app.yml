@@ -1,4 +1,4 @@
-name: Publish React Example App to GitHub Pages
+name: Publish Example App to GitHub Pages
 
 on:
   push:
