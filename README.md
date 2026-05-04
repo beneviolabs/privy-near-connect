@@ -173,6 +173,12 @@ This page will be opened in a popup by the near-connect SDK when a signing reque
   const result = await w.signAndSendTransaction({...txn});
   ```
 
+### Bypassing the sign page for signin calls
+
+Since your user would already be logged in with Privy, when you call `wallet.signIn` or `connector.connect` from your dApp, you may desire to avoid the extra step of prompting the user to sign in again through the sign page:
+
+TBD: we likely want to allow signIn to take a `signerId|accountId` arg and set that as signed in state.
+
 ## Architecture
 
 ### Message flow

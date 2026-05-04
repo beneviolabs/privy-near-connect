@@ -9,13 +9,17 @@ Be respectful and constructive in all interactions. We welcome contributions fro
 - Target `main`. Do not open PRs against the `release` branch — it is machine-managed.
 - Keep PRs focused on a single concern. If you have multiple unrelated changes, open separate PRs.
 - Write a clear description explaining what changed and why. Link any relevant issues.
+- If your PR changes package behavior, public API, developer-facing docs, or example app behavior, include a changeset.
 
-## What to Expect
+To add a changeset:
 
-- A maintainer will review your PR within a few business days.
-- You may receive requests for changes — please respond to feedback or let us know if you need help.
-- Once approved, a maintainer will merge your PR.
-- After merging to `main`, CI automatically publishes an updated `executor.js` to the `release` branch.
+```bash
+npm run changeset
+git add .changeset
+git commit -m "changeset: describe release impact"
+```
+
+If you are unsure whether a change needs one, include it. Maintainers can adjust the release type later, but missing changesets slow down releases.
 
 ## Development
 
@@ -92,7 +96,14 @@ The workflow in `.github/workflows/build-executor.yml` runs automatically on eve
 
 ### Publishing @peerfolio/privy-near-connect to npm
 
-Releases are managed with [Changesets](https://github.com/changesets/changesets). The process:
+Releases are managed with [Changesets](https://github.com/changesets/changesets).
+
+Contributor expectation:
+
+- Every PR that should affect a published package release should include a changeset.
+- If a PR only changes CI, internal-only tooling, or other non-user-facing repo maintenance, a changeset is usually not needed.
+
+Maintainer release flow:
 
 1. **Include a changeset in a PR** describing what changed and whether it's a `patch`, `minor`, or `major` bump:
    ```bash
@@ -103,7 +114,7 @@ Releases are managed with [Changesets](https://github.com/changesets/changesets)
 
 2. **After a PR merges to `main`**, the _Publish to npm_ workflow automatically opens (or updates) a **"Version Packages" PR** that bumps `package.json` and updates `CHANGELOG.md`.
 
-3. **Maintainer Merges the "Version Packages" PR** when ready to cut a release. The workflow then runs `npm publish` with [provenance attestation](https://docs.npmjs.com/generating-provenance-statements), cryptographically linking the published tarball to the exact commit and workflow run.
+3. **Maintainer merges the "Version Packages" PR** when ready to cut a release. That merge triggers the publish workflow, which runs `npm publish` with [provenance attestation](https://docs.npmjs.com/generating-provenance-statements), cryptographically linking the published tarball to the exact commit and workflow run.
 
 > **One-time setup:** configure [npm trusted publishing](https://docs.npmjs.com/generating-provenance-statements#using-third-party-package-publishing-tools) for this package on npmjs.com so the workflow can publish via OIDC without a stored token.
 
