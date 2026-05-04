@@ -1,5 +1,11 @@
 # @peerfolio/privy-near-connect
 
+## 0.0.3
+
+### Patch Changes
+
+- 59801fe: Bump @hotlabs/near-connect
+
 ## 0.0.2
 
 ### Patch Changes
