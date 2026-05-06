@@ -41,6 +41,8 @@
   "scripts": {
     "build": "tsup",
     "build-serve:watch": "concurrently \"tsup --watch\" \"npm run serve:dist\"",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm run build",
     "serve:dist": "serve dist -l 8001 --cors",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
