@@ -1,5 +1,11 @@
 # @peerfolio/privy-near-connect
 
+## 0.0.4
+
+### Patch Changes
+
+- 564d1ec: Build the package automatically during pack/publish so published tarballs always include the `dist/` files referenced by the package exports.
+
 ## 0.0.3
 
 ### Patch Changes
