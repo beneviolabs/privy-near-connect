@@ -15,88 +15,10 @@ For development setup, release process, and troubleshooting see [CONTRIBUTING.md
   ```bash
   npm install @peerfolio/privy-near-connect
   ```
-2. Setup Privy in your app per their docs and ensure user can log in with whichever preferred auth method(s) you want to support. Here is an example using SMS login:
 
-  ```jsx
-  import { useState } from "react";
-  import { useLoginWithSms } from "@privy-io/react-auth";
+2. Setup Privy per [their docs](https://docs.privy.io/recipes/core-js#prerequisites) to obtain your Privy App ID and Client ID.
 
-  export default function LoginWithSms() {
-    const [phoneNumber, setPhoneNumber] = useState("");
-    const [code, setCode] = useState("");
-    const { state, sendCode, loginWithCode } = useLoginWithSms();
-
-    return (
-      <div>
-        {/* Prompt your user to enter their phone number */}
-        <input onChange={(e) => setPhoneNumber(e.currentTarget.value)} value={phoneNumber} />
-        {/* Once a phone number has been entered, send the OTP to it on click */}
-        <button onClick={() => sendCode({ phoneNumber })}>Send Code</button>
-
-        {/* Prompt your user to enter the OTP */}
-        <input onChange={(e) => setCode(e.currentTarget.value)} value={code} />
-        {/* Once an OTP has been entered, submit it to Privy on click */}
-        <button onClick={() => loginWithCode({ code })}>Log in</button>
-      </div>
-    );
-  }
-  ```
-
-  Once a user auths with Privy, the requisite cookies/local storage will be set on their
-browser. This allows the sign page to auth during calls to Privy APIs for signing operations.
-
-3. Setup a signing screen route in your app on `/sign` (or any path you prefer, just make sure to update the manifest later with the correct URL).
-
-  ```jsx
-  // **Option A**: Build your own custom signing page UI
-  import { initSigningPage } from '@peerfolio/privy-near-connect/sign-page';
-  import Privy from '@privy-io/js-sdk-core';
-
-  export default function SignPage() {
-    // Recommended: Optionally check here that user is authed to Privy
-    const privyClient = new Privy({
-      appId: PRIVY_APP_ID,
-      clientId: PRIVY_APP_CLIENT_ID,
-      storage: new LocalStorage(),
-    });
-
-    let session;
-
-    // You may also specify the wallet to be used for signing here if a user has multiple wallets in their Privy account. Check the jsdoc for this function for details.
-    initSigningPage(privyClient, { allowedOrigins: ['https://yourdapp.example.com'] }).then((s) => { session = s });
-
-    return (
-      <div>
-        <h1>Wanna sign this?</h1>
-        {/* Show the requesting origin so users can verify who is asking */}
-        <p>Requested by: <strong>{session?.targetOrigin}</strong></p>
-        <pre>
-          {JSON.stringify(session?.payload, null, 2)}
-        </pre>
-        <button onClick={() => {session.sign()}}>
-          Sign with your wallet
-        </button>
-        <button onClick={() => {window.close()}}>
-          Reject
-        </button>
-      </div>
-    );
-  }
-
-  // **Option B**: Use the SignPagePlugin component for a pre-built signing page UI
-  import { SignPagePlugin } from '@peerfolio/privy-near-connect/sign-page-plugin';
-  import '@radix-ui/themes/styles.css';
-  import '@peerfolio/privy-near-connect/sign-page-plugin/theme.css';
-
-  export default function SignPage() {
-    ...
-    return <SignPagePlugin privy={privyClient} options={{ allowedOrigins: ['https://yourdapp.example.com'] }} />;
-  }
-  ```
-
-This page will be opened in a popup by the near-connect SDK when a signing request is made from the dApp.
-
-4. Setup near-connect on your app
+3. Setup near-connect on your app
 
   i. Add a manifest.json to your dApp with the URL of your sign page:
 
@@ -165,7 +87,90 @@ This page will be opened in a popup by the near-connect SDK when a signing reque
   await connector.connect({ walletId: 'myprivywallet' }); // walletId should match the id field in your manifest for the wallet you set up.
   ```
 
-5. Use the wallet to sign transactions/messages from your dApp as you normally would:
+
+4. Setup a signing screen route in your app on `/sign` (or any path you prefer, just make sure to update the manifest.json with the correct URL).
+
+  ```jsx
+  // **Option A**: Build your own custom signing page UI
+  import { initSigningPage } from '@peerfolio/privy-near-connect/sign-page';
+  import Privy from '@privy-io/js-sdk-core';
+
+  export default function SignPage() {
+    // Recommended: Optionally check here that user is authed to Privy
+    const privyClient = new Privy({
+      appId: PRIVY_APP_ID,
+      clientId: PRIVY_APP_CLIENT_ID,
+      storage: new LocalStorage(),
+    });
+
+    let session;
+
+    // You may also specify the wallet to be used for signing here if a user has multiple wallets in their Privy account. Check the jsdoc for this function for details.
+    initSigningPage(privyClient, { allowedOrigins: ['https://yourdapp.example.com'] }).then((s) => { session = s });
+
+    return (
+      <div>
+        <h1>Wanna sign this?</h1>
+        {/* Show the requesting origin so users can verify who is asking */}
+        <p>Requested by: <strong>{session?.targetOrigin}</strong></p>
+        <pre>
+          {JSON.stringify(session?.payload, null, 2)}
+        </pre>
+        <button onClick={() => {session.sign()}}>
+          Sign with your wallet
+        </button>
+        <button onClick={() => {window.close()}}>
+          Reject
+        </button>
+      </div>
+    );
+  }
+
+  // **Option B**: Use the SignPagePlugin component for a pre-built signing page UI
+  import { SignPagePlugin } from '@peerfolio/privy-near-connect/sign-page-plugin';
+  import '@radix-ui/themes/styles.css';
+  import '@peerfolio/privy-near-connect/sign-page-plugin/theme.css';
+
+  export default function SignPage() {
+    ...
+    return <SignPagePlugin privy={privyClient} options={{ allowedOrigins: ['https://yourdapp.example.com'] }} />;
+  }
+  ```
+
+This page will be opened in a popup by the near-connect SDK when a signing request is made from the dApp.
+
+5. Ensure users can log in with whichever preferred auth method(s) you want to support. Here is an example using SMS login:
+
+  ```jsx
+  import { useState } from "react";
+  import { useLoginWithSms } from "@privy-io/react-auth";
+
+  export default function LoginWithSms() {
+    const [phoneNumber, setPhoneNumber] = useState("");
+    const [code, setCode] = useState("");
+    const { state, sendCode, loginWithCode } = useLoginWithSms();
+
+    return (
+      <div>
+        {/* Prompt your user to enter their phone number */}
+        <input onChange={(e) => setPhoneNumber(e.currentTarget.value)} value={phoneNumber} />
+        {/* Once a phone number has been entered, send the OTP to it on click */}
+        <button onClick={() => sendCode({ phoneNumber })}>Send Code</button>
+
+        {/* Prompt your user to enter the OTP */}
+        <input onChange={(e) => setCode(e.currentTarget.value)} value={code} />
+        {/* Once an OTP has been entered, submit it to Privy on click */}
+        <button onClick={() => loginWithCode({ code })}>Log in</button>
+      </div>
+    );
+  }
+  ```
+
+  Once a user auths with Privy, the requisite cookies/local storage will be set on their
+browser. This allows the sign page to auth during calls to Privy APIs for signing operations.
+
+
+6. Use the wallet to sign transactions/messages from your dApp as you normally would:
 
   ```jsx
   const w = await connector.wallet();
@@ -176,8 +181,6 @@ This page will be opened in a popup by the near-connect SDK when a signing reque
 ### Bypassing the sign page for signin calls
 
 Since your user would already be logged in with Privy, when you call `wallet.signIn` or `connector.connect` from your dApp, you may desire to avoid the extra step of prompting the user to sign in again through the sign page:
-
-TBD: we likely want to allow signIn to take a `signerId|accountId` arg and set that as signed in state.
 
 ## Architecture
 
