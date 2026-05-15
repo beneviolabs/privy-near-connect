@@ -38,7 +38,6 @@ function requestWallet<T>(signPageURL: string, payload: SigningPayload): Promise
     // `event.source` to reflect the sandbox proxy window rather than the popup.
     // We also rely on sandbox guaranteed uuid to avoid cross-iframe spoofing.
     const popup = window.selector.open(signPageURL);
-    console.log(LOG_PREFIX, 'Popup opened', { signPageURL, popup });
 
     const cleanup = () => {
       window.removeEventListener('message', handler);
