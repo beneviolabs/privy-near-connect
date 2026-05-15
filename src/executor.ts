@@ -19,6 +19,9 @@ import { channelMsg, CHANNEL_SOURCE } from '@/types';
 import type { ChannelMsg, SigningPayload } from '@/types';
 
 const LOG_PREFIX = '[privy-near-connect-executor]';
+// How long to wait for the sign page to send READY after the popup opens.
+// Does not limit how long the user can take to approve — that phase is unbounded.
+const READY_TIMEOUT_MS = 5_000;
 
 const ACCOUNT_ID_STORAGE_KEY = 'privy-near-connect:account-id';
 type WalletManifestwithMetadata = WalletManifest & {
@@ -39,7 +42,18 @@ function requestWallet<T>(signPageURL: string, payload: SigningPayload): Promise
     const cleanup = () => {
       window.removeEventListener('message', handler);
       clearInterval(closedPoll);
+      clearTimeout(readyTimeoutId);
     };
+
+    // Guard against the sign page opening but never sending READY (e.g. network
+    // error loading the page, uncaught JS crash before the handshake). Without
+    // this the Promise hangs forever because the closedPoll only fires when the
+    // user manually closes the popup.
+    const readyTimeoutId = setTimeout(() => {
+      cleanup();
+      popup.close();
+      reject(new Error(`Timed out waiting for READY message after ${READY_TIMEOUT_MS}ms`));
+    }, READY_TIMEOUT_MS);
 
     const handler = (event: MessageEvent) => {
       // We do not validate `event.origin` here and rely on the sandbox to do this.
@@ -55,6 +69,7 @@ function requestWallet<T>(signPageURL: string, payload: SigningPayload): Promise
       );
 
       if (msg.type === 'READY') {
+        clearTimeout(readyTimeoutId);
         console.log(LOG_PREFIX, 'Sign page is ready, sending SIGN_REQUEST', payload);
         popup.postMessage(channelMsg.signRequest(payload));
       } else if (msg.type === 'RESULT') {
@@ -80,6 +95,20 @@ function requestWallet<T>(signPageURL: string, payload: SigningPayload): Promise
     }, 300);
 
     window.addEventListener('message', handler);
+
+    // window.selector.open() always returns a ProxyWindow synchronously — never null.
+    // The actual window.open() runs asynchronously inside the sandbox iframe, and
+    // windowIdPromise resolves to null when the browser blocked it (e.g. the user
+    // gesture was consumed by a prior async call). Without this check the Promise
+    // hangs: the sign page never opens so READY never arrives, and closedPoll never
+    // fires because ProxyWindow.closed stays false indefinitely.
+    popup.windowIdPromise.then((windowId) => {
+      if (!windowId) {
+        cleanup();
+        window.dispatchEvent(new Event('popup-blocked'));
+        reject(new Error('Popup blocked by the browser'));
+      }
+    });
   });
 }
 

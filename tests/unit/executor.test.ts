@@ -14,9 +14,10 @@ type FakePopup = {
   postMessage: ReturnType<typeof vi.fn>;
   readonly closed: boolean;
   close(): void;
+  windowIdPromise: Promise<string | null>;
 };
 
-function makePopup(): FakePopup {
+function makePopup({ blocked = false }: { blocked?: boolean } = {}): FakePopup {
   let closed = false;
   return {
     postMessage: vi.fn(),
@@ -26,6 +27,7 @@ function makePopup(): FakePopup {
     close() {
       closed = true;
     },
+    windowIdPromise: Promise.resolve(blocked ? null : 'fake-window-id'),
   };
 }
 
@@ -178,6 +180,38 @@ describe('requestWallet', () => {
     popup.close();
     vi.advanceTimersByTime(300);
     await expect(promise).rejects.toThrow('Privy Sign window closed');
+  });
+
+  it('rejects and dispatches popup-blocked when windowIdPromise resolves to null', async () => {
+    mockWindowOpen.mockReturnValueOnce(makePopup({ blocked: true }));
+    const blocked: Event[] = [];
+    window.addEventListener('popup-blocked', (e) => blocked.push(e), { once: true });
+
+    await expect(wallet.signMessage(PARAMS)).rejects.toThrow('Popup blocked by the browser');
+    expect(blocked).toHaveLength(1);
+  });
+
+  it('rejects and closes the popup when READY never arrives within the timeout', async () => {
+    vi.useFakeTimers();
+    const promise = wallet.signMessage(PARAMS);
+
+    vi.advanceTimersByTime(15_000);
+    await expect(promise).rejects.toThrow('Timed out waiting for READY message');
+    expect(popup.closed).toBe(true);
+  });
+
+  it('does not time out when READY arrives before the deadline', async () => {
+    vi.useFakeTimers();
+    const result = { accountId: 'bob.near', publicKey: 'ed25519:abc', signature: 'sig' };
+    const promise = wallet.signMessage(PARAMS);
+
+    sendReady();
+    await Promise.resolve();
+    send(channelMsg.result(result));
+
+    // Advancing past the READY timeout window must not reject the promise.
+    vi.advanceTimersByTime(15_000);
+    await expect(promise).resolves.toEqual(result);
   });
 
   it('ignores unrecognised message types', async () => {

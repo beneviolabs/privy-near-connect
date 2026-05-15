@@ -178,10 +178,6 @@ browser. This allows the sign page to auth during calls to Privy APIs for signin
   const result = await w.signAndSendTransaction({...txn});
   ```
 
-### Bypassing the sign page for signin calls
-
-Since your user would already be logged in with Privy, when you call `wallet.signIn` or `connector.connect` from your dApp, you may desire to avoid the extra step of prompting the user to sign in again through the sign page:
-
 ## Architecture
 
 ### Message flow
