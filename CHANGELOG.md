@@ -1,5 +1,11 @@
 # @peerfolio/privy-near-connect
 
+## 0.0.5
+
+### Patch Changes
+
+- bfd3240: Handle popup blocking in executor and improve handshake init timeout.
+
 ## 0.0.4
 
 ### Patch Changes
