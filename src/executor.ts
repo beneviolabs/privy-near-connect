@@ -19,6 +19,9 @@ import { channelMsg, CHANNEL_SOURCE } from '@/types';
 import type { ChannelMsg, SigningPayload } from '@/types';
 
 const LOG_PREFIX = '[privy-near-connect-executor]';
+// How long to wait for the sign page to send READY after the popup opens.
+// Does not limit how long the user can take to approve — that phase is unbounded.
+const READY_TIMEOUT_MS = 15_000;
 
 const ACCOUNT_ID_STORAGE_KEY = 'privy-near-connect:account-id';
 type WalletManifestwithMetadata = WalletManifest & {
@@ -36,10 +39,31 @@ function requestWallet<T>(signPageURL: string, payload: SigningPayload): Promise
     // We also rely on sandbox guaranteed uuid to avoid cross-iframe spoofing.
     const popup = window.selector.open(signPageURL);
 
+    // window.selector.open() returns null when the browser blocks the popup
+    // (e.g. the user gesture was consumed by a prior async call). Without this
+    // check, popup.closed in the setInterval below throws a TypeError that is
+    // silently swallowed — the Promise never settles and the caller hangs forever.
+    if (!popup) {
+      window.dispatchEvent(new Event('popup-blocked'));
+      reject(new Error('Popup blocked by the browser'));
+      return;
+    }
+
     const cleanup = () => {
       window.removeEventListener('message', handler);
       clearInterval(closedPoll);
+      clearTimeout(readyTimeoutId);
     };
+
+    // Guard against the sign page opening but never sending READY (e.g. network
+    // error loading the page, uncaught JS crash before the handshake). Without
+    // this the Promise hangs forever because the closedPoll only fires when the
+    // user manually closes the popup.
+    const readyTimeoutId = setTimeout(() => {
+      cleanup();
+      popup.close();
+      reject(new Error('Sign page did not respond in time'));
+    }, READY_TIMEOUT_MS);
 
     const handler = (event: MessageEvent) => {
       // We do not validate `event.origin` here and rely on the sandbox to do this.
@@ -55,6 +79,7 @@ function requestWallet<T>(signPageURL: string, payload: SigningPayload): Promise
       );
 
       if (msg.type === 'READY') {
+        clearTimeout(readyTimeoutId);
         console.log(LOG_PREFIX, 'Sign page is ready, sending SIGN_REQUEST', payload);
         popup.postMessage(channelMsg.signRequest(payload));
       } else if (msg.type === 'RESULT') {

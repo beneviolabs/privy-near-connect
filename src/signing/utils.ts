@@ -89,9 +89,12 @@ export function toNearAction(action: ActionItem): Action {
 }
 
 function hexToBytes(hex: string): Uint8Array {
+  if (hex.length % 2 !== 0) throw new Error(`Invalid hex string: odd length (${hex.length})`);
   const bytes = new Uint8Array(hex.length / 2);
   for (let i = 0; i < bytes.length; i++) {
-    bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+    const byte = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+    if (isNaN(byte)) throw new Error(`Invalid hex character at position ${i * 2}`);
+    bytes[i] = byte;
   }
   return bytes;
 }
