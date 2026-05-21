@@ -100,7 +100,7 @@ For development setup, release process, and troubleshooting see [CONTRIBUTING.md
   // **Option A**: Build your own custom signing page UI
   import { initSigningPage } from '@peerfolio/privy-near-connect/sign-page';
   import Privy from '@privy-io/js-sdk-core';
-
+  import {useEffect, useState} from 'react';
 
   // Load these from your app's environment/config. For example, in Vite you might use
   // `import.meta.env.VITE_PRIVY_APP_ID` and `import.meta.env.VITE_PRIVY_APP_CLIENT_ID`.
@@ -110,6 +110,8 @@ For development setup, release process, and troubleshooting see [CONTRIBUTING.md
   const PRIVY_APP_CLIENT_ID = import.meta.env.VITE_PRIVY_APP_CLIENT_ID
 
   export default function SignPage() {
+    const [ready, setReady] = useState(false);
+
     // Recommended: Optionally check here that user is authed to Privy
     const privyClient = new Privy({
       appId: PRIVY_APP_ID,
@@ -117,12 +119,19 @@ For development setup, release process, and troubleshooting see [CONTRIBUTING.md
       storage: new LocalStorage(),
     });
 
+    useEffect(() => {
+      // important if you have a custom domain on privy with
+      // httponly cookie access since Privy client will otherwise call auth.privy.io to auth
+      // instead of your custom domain, resulting in 401 error.
+      privyClient.initialize().then(() => setReady(true));
+    }, []);
+
     let session;
 
     // You may also specify the wallet to be used for signing here if a user has multiple wallets in their Privy account. Check the jsdoc for this function for details.
     initSigningPage(privyClient, { allowedOrigins: ['https://yourdapp.example.com'] }).then((s) => { session = s });
 
-    return (
+    return ready ? (
       <div>
         <h1>Wanna sign this?</h1>
         {/* Show the requesting origin so users can verify who is asking */}
@@ -192,35 +201,6 @@ browser. This allows the sign page to auth during calls to Privy APIs for signin
   const result = await w.signAndSendTransaction({...txn});
   ```
 
-7. If using a custom Sign Page, ensure that the privy client is initialized before rendering your sign page.
-  ```jsx
-import React, { useEffect, useState } from 'react';
-import Privy, { LocalStorage } from '@privy-io/js-sdk-core';
-
-const privy = new Privy({
-  appId: import.meta.env.VITE_PRIVY_APP_ID,
-  clientId: import.meta.env.VITE_PRIVY_APP_CLIENT_ID,
-  storage: new LocalStorage(),
-});
-
-export const PrivySign: React.FC = () => {
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    // important if you have a custom domain on privy with
-    // httponly cookie access since Privy client will otherwise call auth.privy.io to auth
-    // instead of your custom domain, resulting in 401 error.
-    privy.initialize().then(() => setReady(true));
-  }, []);
-
-  return ready ? (
-    <CustomSignPage
-      privy={privy as unknown as SignPageProps['privy']}
-      ...
-    />
-  ) : null;
-};
-  ```
 
 ## Architecture
 
