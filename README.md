@@ -5,6 +5,8 @@ This SDK enables developer's to set up their own NEAR wallet on top of [Privy's 
 While most of the examples from this library use React, the library is framework-agnostic.
 An [example React app](./examples/react/) is also included to demonstrate usage of the sign page plugin. It is hosted [here](https://beneviolabs.github.io/privy-near-connect/) but note that you need to plug in your own Privy credentials to work it.
 
+`@peerfolio/privy-near-connect` is the official npm package for this repository. The code is maintained in the `beneviolabs/privy-near-connect` GitHub repository, while the published package uses the `@peerfolio` npm scope.
+
 ## Contributing
 
 For development setup, release process, and troubleshooting see [CONTRIBUTING.md](./CONTRIBUTING.md).
@@ -94,6 +96,14 @@ For development setup, release process, and troubleshooting see [CONTRIBUTING.md
   // **Option A**: Build your own custom signing page UI
   import { initSigningPage } from '@peerfolio/privy-near-connect/sign-page';
   import Privy from '@privy-io/js-sdk-core';
+
+
+  // Load these from your app's environment/config. For example, in Vite you might use
+  // `import.meta.env.VITE_PRIVY_APP_ID` and `import.meta.env.VITE_PRIVY_APP_CLIENT_ID`.
+  // In Next.js the equivalent would typically be
+  // `process.env.NEXT_PUBLIC_PRIVY_APP_ID` and `process.env.NEXT_PUBLIC_PRIVY_APP_CLIENT_ID`.
+  const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID
+  const PRIVY_APP_CLIENT_ID = import.meta.env.VITE_PRIVY_APP_CLIENT_ID
 
   export default function SignPage() {
     // Recommended: Optionally check here that user is authed to Privy
