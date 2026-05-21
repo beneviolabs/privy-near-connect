@@ -19,10 +19,12 @@ For development setup, release process, and troubleshooting see [CONTRIBUTING.md
   ```
 
 2. Setup Privy per [their docs](https://docs.privy.io/recipes/core-js#prerequisites) to obtain your Privy App ID and Client ID.
-  2.1 To obtain the App ID.  `New Application` -> `Configuration-App Settings` -> App ID lives on the `Basics` tab.
-  2.2 On the same UI, obtain the Client ID from `Clients` tab -> `Create Client`
 
-3. Setup near-connect on your app
+   2.1 To obtain the App ID.  `New Application` -> `Configuration-App Settings` -> App ID lives on the `Basics` tab.
+
+   2.2 On the same UI, obtain the Client ID from `Clients` tab -> `Create Client`
+
+4. Setup near-connect on your app
 
   i. Add a manifest.json to your dApp with the URL of your sign page:
 
