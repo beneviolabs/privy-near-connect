@@ -19,6 +19,8 @@ For development setup, release process, and troubleshooting see [CONTRIBUTING.md
   ```
 
 2. Setup Privy per [their docs](https://docs.privy.io/recipes/core-js#prerequisites) to obtain your Privy App ID and Client ID.
+  2.1 To obtain the App ID.  `New Application` -> `Configuration-App Settings` -> App ID lives on the `Basics` tab.
+  2.2 On the same UI, obtain the Client ID from `Clients` tab -> `Create Client`
 
 3. Setup near-connect on your app
 
@@ -186,6 +188,36 @@ browser. This allows the sign page to auth during calls to Privy APIs for signin
   const w = await connector.wallet();
   // This will open the signing page you set up in your app to prompt the user to approve the transaction. Once they approve or reject, the popup will close and the promise will resolve with the signed transaction or reject with an error.
   const result = await w.signAndSendTransaction({...txn});
+  ```
+
+7. If using a custom Sign Page, ensure that the privy client is initialized before rendering your sign page.
+  ```jsx
+import React, { useEffect, useState } from 'react';
+import Privy, { LocalStorage } from '@privy-io/js-sdk-core';
+
+const privy = new Privy({
+  appId: import.meta.env.VITE_PRIVY_APP_ID,
+  clientId: import.meta.env.VITE_PRIVY_APP_CLIENT_ID,
+  storage: new LocalStorage(),
+});
+
+export const PrivySign: React.FC = () => {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    // important if you have a custom domain on privy with
+    // httponly cookie access since Privy client will otherwise call auth.privy.io to auth
+    // instead of your custom domain, resulting in 401 error.
+    privy.initialize().then(() => setReady(true));
+  }, []);
+
+  return ready ? (
+    <CustomSignPage
+      privy={privy as unknown as SignPageProps['privy']}
+      ...
+    />
+  ) : null;
+};
   ```
 
 ## Architecture
