@@ -146,7 +146,7 @@ For development setup, release process, and troubleshooting see [CONTRIBUTING.md
           Reject
         </button>
       </div>
-    );
+    ) : null;
   }
 
   // **Option B**: Use the SignPagePlugin component for a pre-built signing page UI
