@@ -20,7 +20,11 @@ For development setup, release process, and troubleshooting see [CONTRIBUTING.md
 
 2. Setup Privy per [their docs](https://docs.privy.io/recipes/core-js#prerequisites) to obtain your Privy App ID and Client ID.
 
-3. Setup near-connect on your app
+   2.1 To obtain the App ID.  `New Application` -> `Configuration-App Settings` -> App ID lives on the `Basics` tab.
+
+   2.2 On the same UI, obtain the Client ID from `Clients` tab -> `Create Client`
+
+4. Setup near-connect on your app
 
   i. Add a manifest.json to your dApp with the URL of your sign page:
 
@@ -96,7 +100,7 @@ For development setup, release process, and troubleshooting see [CONTRIBUTING.md
   // **Option A**: Build your own custom signing page UI
   import { initSigningPage } from '@peerfolio/privy-near-connect/sign-page';
   import Privy from '@privy-io/js-sdk-core';
-
+  import {useEffect, useState} from 'react';
 
   // Load these from your app's environment/config. For example, in Vite you might use
   // `import.meta.env.VITE_PRIVY_APP_ID` and `import.meta.env.VITE_PRIVY_APP_CLIENT_ID`.
@@ -106,6 +110,8 @@ For development setup, release process, and troubleshooting see [CONTRIBUTING.md
   const PRIVY_APP_CLIENT_ID = import.meta.env.VITE_PRIVY_APP_CLIENT_ID
 
   export default function SignPage() {
+    const [ready, setReady] = useState(false);
+
     // Recommended: Optionally check here that user is authed to Privy
     const privyClient = new Privy({
       appId: PRIVY_APP_ID,
@@ -113,12 +119,19 @@ For development setup, release process, and troubleshooting see [CONTRIBUTING.md
       storage: new LocalStorage(),
     });
 
+    useEffect(() => {
+      // important if you have a custom domain on privy with
+      // httponly cookie access since Privy client will otherwise call auth.privy.io to auth
+      // instead of your custom domain, resulting in 401 error.
+      privyClient.initialize().then(() => setReady(true));
+    }, []);
+
     let session;
 
     // You may also specify the wallet to be used for signing here if a user has multiple wallets in their Privy account. Check the jsdoc for this function for details.
     initSigningPage(privyClient, { allowedOrigins: ['https://yourdapp.example.com'] }).then((s) => { session = s });
 
-    return (
+    return ready ? (
       <div>
         <h1>Wanna sign this?</h1>
         {/* Show the requesting origin so users can verify who is asking */}
@@ -133,7 +146,7 @@ For development setup, release process, and troubleshooting see [CONTRIBUTING.md
           Reject
         </button>
       </div>
-    );
+    ) : null;
   }
 
   // **Option B**: Use the SignPagePlugin component for a pre-built signing page UI
@@ -187,6 +200,7 @@ browser. This allows the sign page to auth during calls to Privy APIs for signin
   // This will open the signing page you set up in your app to prompt the user to approve the transaction. Once they approve or reject, the popup will close and the promise will resolve with the signed transaction or reject with an error.
   const result = await w.signAndSendTransaction({...txn});
   ```
+
 
 ## Architecture
 
