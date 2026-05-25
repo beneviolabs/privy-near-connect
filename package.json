@@ -67,7 +67,7 @@
     "@vitest/coverage-v8": "^4.1.4",
     "concurrently": "^9.0.0",
     "eslint": "^10.2.1",
-    "eslint-plugin-jsdoc": "^62.9.0",
+    "eslint-plugin-jsdoc": "^63.0.0",
     "happy-dom": "^20.9.0",
     "prettier": "^3.8.3",
     "react": "^19.2.4",
