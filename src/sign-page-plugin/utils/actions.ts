@@ -130,7 +130,14 @@ function normalizeParamValue(value: unknown): unknown {
   return value;
 }
 
-function formatNear(yocto: string | bigint | number, maxFractionDigits = 6): string {
+/**
+ * Formats a yoctoNEAR amount as a human-readable NEAR string.
+ *
+ * @param yocto - Amount in yoctoNEAR.
+ * @param maxFractionDigits - Maximum fractional digits to render. Defaults to `6`.
+ * @returns The amount formatted in NEAR.
+ */
+export function formatNear(yocto: string | bigint | number, maxFractionDigits = 6): string {
   const value = toBigInt(yocto);
   const whole = value / YOCTO_PER_NEAR;
   const remainder = value % YOCTO_PER_NEAR;
