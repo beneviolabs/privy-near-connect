@@ -254,6 +254,28 @@ describe('initSigningPage()', () => {
       expect(session.payload).toEqual(TEST_PAYLOAD);
     });
 
+    it('rejects and ignores later SIGN_REQUESTs once the abort signal fires', async () => {
+      mockOpener();
+      const controller = new AbortController();
+      const promise = initSigningPage(mockPrivy(), { ...DEFAULT_OPTIONS, signal: controller.signal });
+      await flushPrivyIframeLoad();
+
+      const rejection = expect(promise).rejects.toMatchObject({ name: 'AbortError' });
+      controller.abort();
+      await rejection;
+
+      // Listener was removed on abort: a later SIGN_REQUEST must not resolve a stale session.
+      dispatchSignRequest();
+      await Promise.resolve();
+    });
+
+    it('rejects immediately when the signal is already aborted', async () => {
+      mockOpener();
+      await expect(
+        initSigningPage(mockPrivy(), { ...DEFAULT_OPTIONS, signal: AbortSignal.abort() }),
+      ).rejects.toMatchObject({ name: 'AbortError' });
+    });
+
     it('locks targetOrigin to the first SIGN_REQUEST sender — later senders cannot hijack it', async () => {
       mockOpener();
       const promise = initSigningPage(mockPrivy(), {

@@ -76,13 +76,25 @@ function mountPrivyIframe(privy: Privy): Promise<() => void> {
 function waitForOpenerSignRequest(
   allowedOrigins: string[] | 'dangerouslyAllowAllOrigins',
   timeout: number,
+  signal?: AbortSignal,
 ): Promise<{ payload: SigningPayload; targetOrigin: string }> {
   return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(abortReason(signal));
+      return;
+    }
     console.debug(LOG_PREFIX, '… Waiting for SIGN_REQUEST', { allowedOrigins, timeout });
 
     const cleanup = () => {
       clearTimeout(timeoutId);
       window.removeEventListener('message', onMessage);
+      signal?.removeEventListener('abort', onAbort);
+    };
+
+    const onAbort = () => {
+      cleanup();
+      console.debug(LOG_PREFIX, '✗ SIGN_REQUEST wait aborted');
+      reject(abortReason(signal));
     };
 
     const onMessage = (event: MessageEvent) => {
@@ -109,6 +121,7 @@ function waitForOpenerSignRequest(
     };
 
     window.addEventListener('message', onMessage);
+    signal?.addEventListener('abort', onAbort);
 
     const timeoutId = setTimeout(() => {
       cleanup();
@@ -116,6 +129,10 @@ function waitForOpenerSignRequest(
       reject(new TimeoutError(timeout));
     }, timeout);
   });
+}
+
+function abortReason(signal?: AbortSignal): unknown {
+  return signal?.reason ?? new DOMException('The signing handshake was aborted', 'AbortError');
 }
 
 /**
@@ -148,12 +165,15 @@ export const initSigningPage = async (
 
   await mountPrivyIframe(privy);
 
+  if (options.signal?.aborted) throw abortReason(options.signal);
+
   (window.opener as Window).postMessage(READY_MESSAGE, '*');
   console.debug(LOG_PREFIX, '→ READY posted to *');
 
   const { payload, targetOrigin } = await waitForOpenerSignRequest(
     options.allowedOrigins,
     options.timeout ?? DEFAULT_SIGN_REQUEST_TIMEOUT_MS,
+    options.signal,
   );
 
   return {

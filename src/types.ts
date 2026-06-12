@@ -129,6 +129,8 @@ export type SignPageOptions = {
   wallet?: PrivyNearWallet;
   /** RPC connection options for signing payloads. Defaults to the public RPC for the payload's `network` value, or `mainnet` when `network` is omitted. */
   rpcOptions?: RpcOptions;
+  /** Aborts the handshake when triggered, removing the `SIGN_REQUEST` listener and rejecting any pending wait. Pass a component's unmount signal to avoid leaking listeners across re-mounts. */
+  signal?: AbortSignal;
 };
 
 /** Session returned by `initSigningPage` after receiving a signing payload. */
