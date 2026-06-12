@@ -257,7 +257,10 @@ describe('initSigningPage()', () => {
     it('rejects and ignores later SIGN_REQUESTs once the abort signal fires', async () => {
       mockOpener();
       const controller = new AbortController();
-      const promise = initSigningPage(mockPrivy(), { ...DEFAULT_OPTIONS, signal: controller.signal });
+      const promise = initSigningPage(mockPrivy(), {
+        ...DEFAULT_OPTIONS,
+        signal: controller.signal,
+      });
       await flushPrivyIframeLoad();
 
       const rejection = expect(promise).rejects.toMatchObject({ name: 'AbortError' });
