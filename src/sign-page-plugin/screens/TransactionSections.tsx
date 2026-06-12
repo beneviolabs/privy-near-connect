@@ -2,7 +2,8 @@ import type { ConnectorAction } from '@hot-labs/near-connect/build/actions/types
 import { ChevronDownIcon } from '@radix-ui/react-icons';
 import { Text } from '@radix-ui/themes';
 
-import { TransactionGroupCard } from '@/sign-page-plugin/components';
+import { SummaryCard, TransactionGroupCard } from '@/sign-page-plugin/components';
+import type { SummaryRow } from '@/sign-page-plugin/components';
 import type { SigningPayload } from '@/types';
 import type { ActionSummary } from '@/sign-page-plugin/utils/actions';
 import { estimateMaxFeeNear, summarizeAction } from '@/sign-page-plugin/utils/actions';
@@ -15,12 +16,6 @@ type TransactionPayload = Extract<
 type TransactionGroup = {
   receiverId: string;
   actions: ConnectorAction[];
-};
-
-type SummaryRow = {
-  label: string;
-  value: string;
-  secondaryValue?: string;
 };
 
 /** Display copy and grouped actions for transaction-style approvals. */
@@ -112,25 +107,7 @@ export function TransactionSections({ request }: TransactionSectionsProps) {
           <Text size="3" weight="medium" className="pnc-section__title">
             Transaction summary
           </Text>
-          <div className="pnc-summary-card">
-            {request.summaryRows.map((row) => (
-              <div key={`${row.label}-${row.value}`} className="pnc-summary-card__row">
-                <Text size="3" className="pnc-summary-card__label">
-                  {row.label}
-                </Text>
-                <div className="pnc-summary-card__values">
-                  <Text size="3" weight="medium" className="pnc-summary-card__value">
-                    {row.value}
-                  </Text>
-                  {row.secondaryValue ? (
-                    <Text size="2" className="pnc-summary-card__secondary-value">
-                      {row.secondaryValue}
-                    </Text>
-                  ) : null}
-                </div>
-              </div>
-            ))}
-          </div>
+          <SummaryCard rows={request.summaryRows} />
         </section>
       ) : null}
 
