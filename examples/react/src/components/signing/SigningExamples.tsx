@@ -1,4 +1,5 @@
 import { NearConnector, NearWalletBase } from '@hot-labs/near-connect';
+import { KeyPair } from '@near-js/crypto';
 import { useEffect, useRef, useState } from 'react';
 
 import type {
@@ -12,6 +13,7 @@ import {
   TEST_TX_PAYLOAD,
   TEST_TXS_PAYLOAD,
   TEST_DELEGATE_PAYLOAD,
+  buildAddFullAccessKeyPayload,
   payloadWithNetwork,
 } from '../../utils/signing/payloads';
 
@@ -125,6 +127,18 @@ export function SigningExamples({ network, isLoggedIn }: Props) {
     return runAction(() => wallet!.signDelegateActions(p));
   }
 
+  function handleAddFullAccessKey() {
+    // Generate an ephemeral key so the grant points at a key that exists only in
+    // this browser session rather than one anyone else controls.
+    const publicKey = KeyPair.fromRandom('ed25519').getPublicKey().toString();
+    const p = buildAddFullAccessKeyPayload({
+      accountId: accountId!,
+      publicKey,
+      network,
+    }) as unknown as SignAndSendTransactionParams;
+    return runAction(async () => ({ publicKey, result: await wallet!.signAndSendTransaction(p) }));
+  }
+
   const busy = status === 'pending';
 
   return (
@@ -146,6 +160,9 @@ export function SigningExamples({ network, isLoggedIn }: Props) {
         </button>
         <button disabled={!wallet || busy} onClick={handleSignDelegateActions}>
           Sign Delegate Action
+        </button>
+        <button disabled={!wallet || !accountId || busy} onClick={handleAddFullAccessKey}>
+          Add Full Access Key
         </button>
       </div>
       <p>Status: {status}</p>

@@ -53,6 +53,33 @@ export const TEST_DELEGATE_PAYLOAD = {
   ],
 };
 
+/**
+ * Builds a transaction that adds a full-access key to the signer's own account.
+ *
+ * @param params - The signer account, the `ed25519:`-encoded public key to add, and the target network.
+ * @returns A `signAndSendTransaction` payload carrying a single `AddKey` action.
+ */
+export function buildAddFullAccessKeyPayload(params: {
+  accountId: string;
+  publicKey: string;
+  network: 'testnet' | 'mainnet';
+}) {
+  return {
+    kind: 'signAndSendTransaction' as const,
+    network: params.network,
+    receiverId: params.accountId,
+    actions: [
+      {
+        type: 'AddKey',
+        params: {
+          publicKey: params.publicKey,
+          accessKey: { permission: 'FullAccess' },
+        },
+      },
+    ],
+  };
+}
+
 export function payloadWithNetwork(
   payload:
     | typeof TEST_MESSAGE_PAYLOAD
