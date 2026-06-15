@@ -167,6 +167,55 @@ describe('initSigningPage()', () => {
     });
   });
 
+  describe('mount abort', () => {
+    it('aborts while the iframe is still mounting, tearing it down and never posting READY', async () => {
+      const opener = mockOpener();
+      const controller = new AbortController();
+      const promise = initSigningPage(mockPrivy(), {
+        ...DEFAULT_OPTIONS,
+        signal: controller.signal,
+      });
+
+      // The iframe is in the DOM but has not fired `load`, so the mount is still pending.
+      await Promise.resolve();
+      expect(document.querySelector('iframe[data-privy-embed]')).not.toBeNull();
+
+      const rejection = expect(promise).rejects.toMatchObject({ name: 'AbortError' });
+      controller.abort();
+      await rejection;
+
+      // READY is never posted, so the opener never fires a SIGN_REQUEST into a dead listener.
+      expect(opener.postMessage).not.toHaveBeenCalled();
+      // The not-yet-loaded iframe is removed rather than orphaned.
+      expect(document.querySelector('iframe[data-privy-embed]')).toBeNull();
+    });
+
+    it('mounts a fresh iframe after a mid-mount abort instead of reusing the orphan', async () => {
+      mockOpener();
+      const controller = new AbortController();
+      const aborted = initSigningPage(mockPrivy(), {
+        ...DEFAULT_OPTIONS,
+        signal: controller.signal,
+      });
+
+      await Promise.resolve();
+      const firstIframe = document.querySelector('iframe[data-privy-embed]');
+      expect(firstIframe).not.toBeNull();
+
+      const rejection = expect(aborted).rejects.toMatchObject({ name: 'AbortError' });
+      controller.abort();
+      await rejection;
+
+      // The next handshake mounts a brand-new iframe and completes normally.
+      const promise = initSigningPage(mockPrivy(), DEFAULT_OPTIONS);
+      await flushPrivyIframeLoad();
+      expect(document.querySelector('iframe[data-privy-embed]')).not.toBe(firstIframe);
+
+      dispatchSignRequest();
+      await expect(promise).resolves.toMatchObject({ payload: TEST_PAYLOAD });
+    });
+  });
+
   describe('SIGN_REQUEST handling', () => {
     it('resolves with the payload when SIGN_REQUEST arrives', async () => {
       mockOpener();

@@ -17,8 +17,13 @@ const DEFAULT_SIGN_REQUEST_TIMEOUT_MS = 30_000;
 const READY_MESSAGE = channelMsg.ready();
 let cleanupMountedIframe: (() => void) | undefined;
 
-function mountPrivyIframe(privy: Privy): Promise<() => void> {
-  return new Promise((resolve) => {
+function mountPrivyIframe(privy: Privy, signal?: AbortSignal): Promise<() => void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(abortReason(signal));
+      return;
+    }
+
     const mountedIframe = document.querySelector('iframe[data-privy-embed]');
     if (mountedIframe && cleanupMountedIframe) {
       console.debug(LOG_PREFIX, '↺ Reusing existing Privy iframe');
@@ -46,8 +51,15 @@ function mountPrivyIframe(privy: Privy): Promise<() => void> {
       cleanedUp = true;
       console.debug(LOG_PREFIX, '↻ Cleaning up existing Privy iframe');
       window.removeEventListener('message', onMessage);
+      signal?.removeEventListener('abort', onAbort);
       iframe.remove();
       if (cleanupMountedIframe === cleanup) cleanupMountedIframe = undefined;
+    };
+
+    const onAbort = () => {
+      console.debug(LOG_PREFIX, '✗ Privy iframe mount aborted');
+      cleanup();
+      reject(abortReason(signal));
     };
 
     iframe.addEventListener(
@@ -61,6 +73,7 @@ function mountPrivyIframe(privy: Privy): Promise<() => void> {
           },
         });
         console.debug(LOG_PREFIX, '✓ Privy iframe loaded and message poster set');
+        signal?.removeEventListener('abort', onAbort);
         cleanupMountedIframe = cleanup;
         resolve(cleanup);
       },
@@ -68,6 +81,7 @@ function mountPrivyIframe(privy: Privy): Promise<() => void> {
     );
 
     window.addEventListener('message', onMessage);
+    signal?.addEventListener('abort', onAbort);
 
     document.body.appendChild(iframe);
   });
@@ -163,9 +177,9 @@ export const initSigningPage = async (
     throw new WildcardOriginError();
   }
 
-  await mountPrivyIframe(privy);
-
   if (options.signal?.aborted) throw abortReason(options.signal);
+
+  await mountPrivyIframe(privy, options.signal);
 
   (window.opener as Window).postMessage(READY_MESSAGE, '*');
   console.debug(LOG_PREFIX, '→ READY posted to *');
