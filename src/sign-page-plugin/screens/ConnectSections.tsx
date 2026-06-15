@@ -10,6 +10,11 @@ import {
 } from '@/sign-page-plugin/components';
 import { formatNear } from '@/sign-page-plugin/utils/actions';
 
+// near-api-js's `addFunctionCallAccessKey` caps an omitted allowance at 0.25 NEAR, matching
+// the `@hot-labs/near-connect` documented default. A truly unlimited key is never created, so
+// both an omitted and an explicit `unlimited` gasAllowance resolve to this same cap on-chain.
+const DEFAULT_GAS_ALLOWANCE_YOCTO = 250_000_000_000_000_000_000_000n; // 0.25 NEAR
+
 type ConnectSectionsProps = {
   message?: string;
   addFunctionCallKey?: AddFunctionCallKeyParams;
@@ -39,12 +44,12 @@ function AccessKeyGrant({ grant }: { grant: AddFunctionCallKeyParams }) {
       ? grant.allowMethods.methodNames.join(', ')
       : 'No methods';
 
-  // Mirrors the on-chain behavior in AccountWithPrivySigner.ncSignIn: only a `limited`
-  // gasAllowance is forwarded as a cap; omitted or `unlimited` means an unlimited key.
+  // Mirrors the on-chain behavior in AccountWithPrivySigner.ncSignIn: a `limited` gasAllowance
+  // is forwarded as a cap, while omitted or `unlimited` falls back to the 0.25 NEAR default.
   const allowance =
     grant.gasAllowance?.kind === 'limited'
       ? `${formatNear(grant.gasAllowance.amount)} NEAR`
-      : 'Unlimited';
+      : `${formatNear(DEFAULT_GAS_ALLOWANCE_YOCTO)} NEAR (default)`;
 
   return (
     <Section title="And grant an access key" surface="none">
