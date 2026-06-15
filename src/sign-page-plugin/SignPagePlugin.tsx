@@ -1,7 +1,7 @@
 import type Privy from '@privy-io/js-sdk-core';
 import { Callout, Flex, Text, Theme } from '@radix-ui/themes';
 import type { ThemeProps } from '@radix-ui/themes';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { initSigningPage } from '@/sign-page';
 import type { SignPageOptions, SignPageSession } from '@/types';
@@ -65,20 +65,30 @@ export function SignPagePlugin(props: SignPageProps) {
   const panelBackground = theme?.panelBackground ?? 'solid';
   const [status, setStatus] = useState<Status>({ kind: 'waiting' });
   const [currentAccountId, setCurrentAccountId] = useState<string>();
-  const initialized = useRef(false);
 
+  // Initialize once on mount and abort on unmount. `privy`/`options` are captured from the
+  // first render; consumers pass `options` as a fresh object literal each render, so listing
+  // it as a dependency would re-run the handshake on every parent re-render.
   useEffect(() => {
-    if (initialized.current) return;
-    initialized.current = true;
+    const controller = new AbortController();
+    const { signal } = controller;
 
     resolveCurrentAccountId(privy, options.wallet)
-      .then((accountId) => setCurrentAccountId(accountId))
+      .then((accountId) => {
+        if (!signal.aborted) setCurrentAccountId(accountId);
+      })
       .catch(() => undefined);
 
-    initSigningPage(privy, options)
-      .then((session) => setStatus({ kind: 'ready', session }))
-      .catch((e: Error) => setStatus({ kind: 'error', message: e.message }));
-  }, [privy, options]);
+    initSigningPage(privy, { ...options, signal })
+      .then((session) => {
+        if (!signal.aborted) setStatus({ kind: 'ready', session });
+      })
+      .catch((e: Error) => {
+        if (!signal.aborted) setStatus({ kind: 'error', message: e.message });
+      });
+
+    return () => controller.abort();
+  }, []);
 
   const handleApprove = () => {
     if (status.kind !== 'ready') return;

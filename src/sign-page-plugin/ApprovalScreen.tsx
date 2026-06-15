@@ -48,7 +48,7 @@ export function ApprovalScreen({
         <>
           <div className="pnc-card__body">
             <ApprovalHeader originInfo={originInfo} title="Connect to" />
-            <ConnectSections message={message} />
+            <ConnectSections message={message} addFunctionCallKey={payload.addFunctionCallKey} />
           </div>
           <div className="pnc-card__footer">
             <ApprovalNotice

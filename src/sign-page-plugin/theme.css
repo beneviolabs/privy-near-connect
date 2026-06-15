@@ -369,12 +369,15 @@
 }
 
 .pnc-summary-card__label {
+  flex-shrink: 0;
+  white-space: nowrap;
   color: var(--pnc-accent-soft-color) !important;
   line-height: 1.4;
 }
 
 .pnc-summary-card__values {
   display: flex;
+  min-width: 0;
   flex-direction: column;
   align-items: flex-end;
   gap: 3px;
@@ -384,11 +387,13 @@
 .pnc-summary-card__value {
   color: var(--gray-12) !important;
   line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .pnc-summary-card__secondary-value {
   color: var(--gray-11) !important;
   line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 /* ---------- Advanced details accordion ---------- */

@@ -1,8 +1,14 @@
 import type { ConnectorAction } from '@hot-labs/near-connect/build/actions/types.js';
-import { ChevronDownIcon } from '@radix-ui/react-icons';
+import { ChevronDownIcon, ExclamationTriangleIcon } from '@radix-ui/react-icons';
 import { Text } from '@radix-ui/themes';
 
-import { TransactionGroupCard } from '@/sign-page-plugin/components';
+import {
+  ApprovalNotice,
+  Section,
+  SummaryCard,
+  TransactionGroupCard,
+} from '@/sign-page-plugin/components';
+import type { SummaryRow } from '@/sign-page-plugin/components';
 import type { SigningPayload } from '@/types';
 import type { ActionSummary } from '@/sign-page-plugin/utils/actions';
 import { estimateMaxFeeNear, summarizeAction } from '@/sign-page-plugin/utils/actions';
@@ -17,12 +23,6 @@ type TransactionGroup = {
   actions: ConnectorAction[];
 };
 
-type SummaryRow = {
-  label: string;
-  value: string;
-  secondaryValue?: string;
-};
-
 /** Display copy and grouped actions for transaction-style approvals. */
 export type TransactionView = {
   title: string;
@@ -30,6 +30,8 @@ export type TransactionView = {
   detailCopy: string;
   summaryRows: SummaryRow[];
   transactions: TransactionGroup[];
+  /** Public keys this request grants full (unrestricted) access to, if any. */
+  fullAccessKeys: string[];
   /** Signing account, shown in the Advanced Details section. */
   accountId?: string;
 };
@@ -88,8 +90,24 @@ export function buildTransactionView(
     detailCopy: buildTransactionDescription(primaryAction, allActions.length, transactions.length),
     summaryRows: buildTransactionSummaryRows(primaryAction, transactions, network),
     transactions,
+    fullAccessKeys: collectFullAccessKeys(allActions),
     accountId: currentAccountId,
   };
+}
+
+/**
+ * Collects the public keys of any `AddKey` actions that grant full
+ * (unrestricted) access, so the approval screen can disclose them prominently.
+ *
+ * @param actions - Flat list of actions across all transactions being signed.
+ * @returns The `ed25519:`-encoded public keys receiving full access.
+ */
+function collectFullAccessKeys(actions: ConnectorAction[]): string[] {
+  return actions
+    .filter(
+      (action) => action.type === 'AddKey' && action.params.accessKey.permission === 'FullAccess',
+    )
+    .map((action) => (action as Extract<ConnectorAction, { type: 'AddKey' }>).params.publicKey);
 }
 
 /** Renders the transaction-oriented approval sections. */
@@ -107,30 +125,16 @@ export function TransactionSections({ request }: TransactionSectionsProps) {
         </div>
       </section>
 
+      {request.fullAccessKeys.length > 0 ? (
+        <FullAccessKeyGrant publicKeys={request.fullAccessKeys} />
+      ) : null}
+
       {request.summaryRows.length > 0 ? (
         <section className="pnc-section">
           <Text size="3" weight="medium" className="pnc-section__title">
             Transaction summary
           </Text>
-          <div className="pnc-summary-card">
-            {request.summaryRows.map((row) => (
-              <div key={`${row.label}-${row.value}`} className="pnc-summary-card__row">
-                <Text size="3" className="pnc-summary-card__label">
-                  {row.label}
-                </Text>
-                <div className="pnc-summary-card__values">
-                  <Text size="3" weight="medium" className="pnc-summary-card__value">
-                    {row.value}
-                  </Text>
-                  {row.secondaryValue ? (
-                    <Text size="2" className="pnc-summary-card__secondary-value">
-                      {row.secondaryValue}
-                    </Text>
-                  ) : null}
-                </div>
-              </div>
-            ))}
-          </div>
+          <SummaryCard rows={request.summaryRows} />
         </section>
       ) : null}
 
@@ -167,6 +171,25 @@ export function TransactionSections({ request }: TransactionSectionsProps) {
         </div>
       </details>
     </>
+  );
+}
+
+/** Prominently discloses an `AddKey` action that grants full account access. */
+function FullAccessKeyGrant({ publicKeys }: { publicKeys: string[] }) {
+  return (
+    <Section title="And grant a full-access key" surface="none">
+      <SummaryCard
+        rows={publicKeys.map((publicKey, index) => ({
+          label: publicKeys.length > 1 ? `Key ${index + 1}` : 'Public key',
+          value: publicKey,
+        }))}
+      />
+      <ApprovalNotice
+        tone="warning"
+        text="A full-access key has unrestricted control of your account: it can move funds, deploy contracts, and remove other keys without asking again until it is revoked. Only approve if you fully trust this app."
+        icon={<ExclamationTriangleIcon />}
+      />
+    </Section>
   );
 }
 

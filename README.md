@@ -39,7 +39,7 @@ For development setup, release process, and troubleshooting see [CONTRIBUTING.md
       "description": "Web wallet for NEAR.",
       "website": "https://yourdapp.com",
       "version": "1.0.0",
-      "executor": "https://raw.githubusercontent.com/beneviolabs/privy-near-connect/refs/heads/release/executor.js",
+      "executor": "https://raw.githubusercontent.com/beneviolabs/privy-near-connect/3d56b782669d242a1ea432921e291abc26b4ebc7/executor.js",
       "type": "sandbox",
       "platform": {
         "web": "https://yourdapp.com"
@@ -69,6 +69,14 @@ For development setup, release process, and troubleshooting see [CONTRIBUTING.md
     ]
   }
   ```
+
+  > **Pin the `executor` URL to an immutable commit.** near-connect fetches and runs the
+  > `executor` script at runtime with no integrity check, so the URL determines what code
+  > executes in your users' browsers. Reference a specific commit SHA
+  > (`.../<commit-sha>/executor.js`) rather than a mutable branch like
+  > `.../refs/heads/release/executor.js` — a branch URL silently picks up whatever is pushed
+  > to that branch next. Bump the SHA deliberately when you adopt a new executor build, and
+  > treat write access to the branch it is built from as security-sensitive.
 
   ii. Initialize near-connect in your dApp and specify the wallet from the manifest:
 

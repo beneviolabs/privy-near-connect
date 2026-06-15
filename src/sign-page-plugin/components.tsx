@@ -16,6 +16,8 @@ export type OriginInfo = {
 export type SummaryRow = {
   label: string;
   value: string;
+  /** Optional secondary value rendered beneath the primary value. */
+  secondaryValue?: string;
 };
 
 type ActionButtonProps = Omit<ComponentProps<typeof ThemedButton>, 'variant'> & {
@@ -106,6 +108,31 @@ export function Section({ title, surface = 'card', children }: SectionProps) {
       </Text>
       {surface === 'card' ? <div className="pnc-section__surface">{children}</div> : children}
     </section>
+  );
+}
+
+/** Renders a card of label-value rows shared by approval summary surfaces. */
+export function SummaryCard({ rows }: { rows: SummaryRow[] }) {
+  return (
+    <div className="pnc-summary-card">
+      {rows.map((row) => (
+        <div key={`${row.label}-${row.value}`} className="pnc-summary-card__row">
+          <Text size="3" className="pnc-summary-card__label">
+            {row.label}
+          </Text>
+          <div className="pnc-summary-card__values">
+            <Text size="3" weight="medium" className="pnc-summary-card__value">
+              {row.value}
+            </Text>
+            {row.secondaryValue ? (
+              <Text size="2" className="pnc-summary-card__secondary-value">
+                {row.secondaryValue}
+              </Text>
+            ) : null}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
