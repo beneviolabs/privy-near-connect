@@ -1,5 +1,11 @@
 # @peerfolio/privy-near-connect
 
+## 0.0.6
+
+### Patch Changes
+
+- 1512919: Sign-page approval disclosure, listener cleanup, and build fixes
+
 ## 0.0.5
 
 ### Patch Changes
