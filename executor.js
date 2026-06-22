@@ -40,7 +40,7 @@ var channelMsg = {
 
 // src/executor.ts
 var LOG_PREFIX = "[privy-near-connect-executor]";
-var READY_TIMEOUT_MS = 5e3;
+var READY_TIMEOUT_MS = 3e4;
 var ACCOUNT_ID_STORAGE_KEY = "privy-near-connect:account-id";
 function requestWallet(signPageURL, payload) {
   return new Promise((resolve, reject) => {
