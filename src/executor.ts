@@ -21,7 +21,7 @@ import type { ChannelMsg, SigningPayload } from '@/types';
 const LOG_PREFIX = '[privy-near-connect-executor]';
 // How long to wait for the sign page to send READY after the popup opens.
 // Does not limit how long the user can take to approve — that phase is unbounded.
-const READY_TIMEOUT_MS = 5_000;
+const READY_TIMEOUT_MS = 30_000;
 
 const ACCOUNT_ID_STORAGE_KEY = 'privy-near-connect:account-id';
 type WalletManifestwithMetadata = WalletManifest & {
