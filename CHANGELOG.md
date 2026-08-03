@@ -1,5 +1,11 @@
 # @peerfolio/privy-near-connect
 
+## 0.0.7
+
+### Patch Changes
+
+- 2c340d5: Misc updates and fixes (+dependabot)
+
 ## 0.0.6
 
 ### Patch Changes
