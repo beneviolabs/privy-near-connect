@@ -195,7 +195,7 @@ describe('requestWallet', () => {
     vi.useFakeTimers();
     const promise = wallet.signMessage(PARAMS);
 
-    vi.advanceTimersByTime(15_000);
+    vi.advanceTimersByTime(30_000);
     await expect(promise).rejects.toThrow('Timed out waiting for READY message');
     expect(popup.closed).toBe(true);
   });
@@ -210,7 +210,7 @@ describe('requestWallet', () => {
     send(channelMsg.result(result));
 
     // Advancing past the READY timeout window must not reject the promise.
-    vi.advanceTimersByTime(15_000);
+    vi.advanceTimersByTime(30_000);
     await expect(promise).resolves.toEqual(result);
   });
 
