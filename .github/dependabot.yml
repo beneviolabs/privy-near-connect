@@ -1,16 +1,49 @@
 version: 2
 updates:
-  - package-ecosystem: "npm"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
-    groups:
-      dev-dependencies:
-        dependency-type: "development"
-        patterns:
-          - "*"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 3
+    groups:
+      github-actions:
+        applies-to: version-updates
+        patterns:
+          - "*"
+      github-actions-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/"
+    labels:
+      - "dependencies"
+    schedule:
       interval: "monthly"
+    cooldown:
+      default-days: 3
+      semver-major-days: 7
+      semver-minor-days: 3
+      semver-patch-days: 3
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      # react, react-dom and @types/react must be upgraded in lockstep.
+      # Defined before the catch-all so they always land in one PR.
+      react:
+        applies-to: version-updates
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react*"
+      dependencies:
+        applies-to: version-updates
+        patterns:
+          - "*"
+      dependencies-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
