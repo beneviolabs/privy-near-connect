@@ -17,6 +17,7 @@ import type { FinalExecutionOutcome } from '@near-js/types';
 
 import { channelMsg, CHANNEL_SOURCE } from '@/types';
 import type { ChannelMsg, SigningPayload } from '@/types';
+import { createLogger } from '@/log';
 
 const LOG_PREFIX = '[privy-near-connect-executor]';
 // How long to wait for the sign page to send READY after the popup opens.
@@ -27,10 +28,13 @@ const ACCOUNT_ID_STORAGE_KEY = 'privy-near-connect:account-id';
 type WalletManifestwithMetadata = WalletManifest & {
   metadata: {
     signPageURL: string;
+    debug?: boolean;
   };
 };
 
-function requestWallet<T>(signPageURL: string, payload: SigningPayload): Promise<T> {
+function requestWallet<T>(signPageURL: string, payload: SigningPayload, debug = false): Promise<T> {
+  const logger = createLogger(LOG_PREFIX, debug);
+
   return new Promise((resolve, reject) => {
     // Use the near-connect sandbox API to open the sign page.
     // Native `window.open()` won't work the same because the sandbox
@@ -60,17 +64,11 @@ function requestWallet<T>(signPageURL: string, payload: SigningPayload): Promise
       const msg = event.data as ChannelMsg;
 
       if (!msg || msg.source !== CHANNEL_SOURCE) return;
-      console.debug(
-        LOG_PREFIX,
-        'Received message from sign page',
-        event.data,
-        'origin:',
-        event.origin,
-      );
+      logger.debug('Received message from sign page', event.data);
 
       if (msg.type === 'READY') {
         clearTimeout(readyTimeoutId);
-        console.log(LOG_PREFIX, 'Sign page is ready, sending SIGN_REQUEST', payload);
+        logger.debug('Sending SIGN_REQUEST', payload);
         popup.postMessage(channelMsg.signRequest(payload));
       } else if (msg.type === 'RESULT') {
         cleanup();
@@ -116,10 +114,11 @@ const wallet: NearWalletBase & { manifest: WalletManifestwithMetadata } = {
   manifest: {} as WalletManifestwithMetadata,
 
   async signIn(data?: SignInParams): Promise<Account[]> {
-    const accounts = await requestWallet<Account[]>(this.manifest.metadata.signPageURL, {
-      kind: 'signIn',
-      ...data,
-    });
+    const accounts = await requestWallet<Account[]>(
+      this.manifest.metadata.signPageURL,
+      { kind: 'signIn', ...data },
+      this.manifest.metadata.debug,
+    );
     const accountId = accounts[0]?.accountId;
 
     if (accountId) {
@@ -138,6 +137,7 @@ const wallet: NearWalletBase & { manifest: WalletManifestwithMetadata } = {
         kind: 'signInAndSignMessage',
         ...data,
       },
+      this.manifest.metadata.debug,
     );
     const accountId = accounts[0]?.accountId;
 
@@ -149,7 +149,7 @@ const wallet: NearWalletBase & { manifest: WalletManifestwithMetadata } = {
   },
 
   async signOut(_data?: { network?: string }): Promise<void> {
-    console.log(LOG_PREFIX, 'signOut');
+    createLogger(LOG_PREFIX, this.manifest.metadata.debug).debug('signOut');
     await window.selector.storage.remove(ACCOUNT_ID_STORAGE_KEY);
   },
 
@@ -166,34 +166,50 @@ const wallet: NearWalletBase & { manifest: WalletManifestwithMetadata } = {
   },
 
   async signMessage(params: SignMessageParams): Promise<SignedMessage> {
-    return requestWallet(this.manifest.metadata.signPageURL, { kind: 'signMessage', ...params });
+    return requestWallet(
+      this.manifest.metadata.signPageURL,
+      { kind: 'signMessage', ...params },
+      this.manifest.metadata.debug,
+    );
   },
 
   async signAndSendTransaction(
     params: SignAndSendTransactionParams,
   ): Promise<FinalExecutionOutcome> {
-    return requestWallet(this.manifest.metadata.signPageURL, {
-      kind: 'signAndSendTransaction',
-      ...params,
-    });
+    return requestWallet(
+      this.manifest.metadata.signPageURL,
+      {
+        kind: 'signAndSendTransaction',
+        ...params,
+      },
+      this.manifest.metadata.debug,
+    );
   },
 
   async signAndSendTransactions(
     params: SignAndSendTransactionsParams,
   ): Promise<FinalExecutionOutcome[]> {
-    return requestWallet(this.manifest.metadata.signPageURL, {
-      kind: 'signAndSendTransactions',
-      ...params,
-    });
+    return requestWallet(
+      this.manifest.metadata.signPageURL,
+      {
+        kind: 'signAndSendTransactions',
+        ...params,
+      },
+      this.manifest.metadata.debug,
+    );
   },
 
   async signDelegateActions(
     params: SignDelegateActionsParams,
   ): Promise<SignDelegateActionsResponse> {
-    return requestWallet(this.manifest.metadata.signPageURL, {
-      kind: 'signDelegateActions',
-      ...params,
-    });
+    return requestWallet(
+      this.manifest.metadata.signPageURL,
+      {
+        kind: 'signDelegateActions',
+        ...params,
+      },
+      this.manifest.metadata.debug,
+    );
   },
 };
 

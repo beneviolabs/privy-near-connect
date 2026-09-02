@@ -10,7 +10,7 @@ import { createProvider, AccountWithPrivySigner } from '@/signing/account';
 import type { PrivyConfig, RpcOptions } from '@/signing/account';
 import { channelMsg } from '@/types';
 import type { SigningPayload, SigningResult } from '@/types';
-import { LOG_PREFIX } from '@/log';
+import { createLogger, LOG_PREFIX, type Logger } from '@/log';
 
 export type { RpcOptions } from '@/signing/account';
 
@@ -47,9 +47,9 @@ export function isPrivyNearWallet(account: unknown): account is PrivyNearWallet 
   );
 }
 
-async function getUserNearWallet(privy: Privy): Promise<PrivyNearWallet> {
+async function getUserNearWallet(privy: Privy, logger: Logger): Promise<PrivyNearWallet> {
   const { user } = await privy.user.get();
-  console.debug(LOG_PREFIX, 'User linked accounts fetched', { accounts: user.linked_accounts });
+  logger.debug('User linked accounts fetched', { accounts: user.linked_accounts });
   for (const account of user.linked_accounts) {
     if (isPrivyNearWallet(account)) return account;
   }
@@ -77,23 +77,30 @@ export function buildSignFn(
   payload: SigningPayload,
   wallet?: PrivyNearWallet,
   rpcOptions?: RpcOptions,
+  debug = false,
 ): () => Promise<void> {
+  const logger = createLogger(LOG_PREFIX, debug);
+
   return async () => {
     try {
-      console.debug(LOG_PREFIX, '→ sign() start', { target, kind: payload.kind });
+      logger.debug('→ sign() start', { target, kind: payload.kind });
       if (!window.opener) throw new WindowOpenerClosedError();
 
       if (typeof payload !== 'object' || payload === null || !('kind' in payload)) {
         throw new UnsupportedSigningPayloadError();
       }
 
-      const walletToUse = wallet ?? (await getUserNearWallet(privy));
+      const walletToUse = wallet ?? (await getUserNearWallet(privy, logger));
       const walletConfig: PrivyConfig = {
         privyClient: privy,
         wallet: walletToUse,
+        logger,
       };
       const network = 'network' in payload ? payload.network : undefined;
-      const account = new AccountWithPrivySigner(walletConfig, createProvider(network, rpcOptions));
+      const account = new AccountWithPrivySigner(
+        walletConfig,
+        createProvider(network, rpcOptions, logger),
+      );
 
       let result: SigningResult;
       switch (payload.kind) {
@@ -120,11 +127,11 @@ export function buildSignFn(
       }
 
       const resultMsg = channelMsg.result(result);
-      console.debug(LOG_PREFIX, '→ RESULT posted', resultMsg);
+      logger.debug('→ RESULT posted', resultMsg);
       window.opener.postMessage(resultMsg, target);
     } catch (error) {
       const signingError = error as Error & { type?: string };
-      postSigningError(target, signingError);
+      postSigningError(target, signingError, logger);
       throw signingError;
     } finally {
       window.close();
@@ -132,7 +139,7 @@ export function buildSignFn(
   };
 }
 
-function postSigningError(target: string, error: Error & { type?: string }) {
+function postSigningError(target: string, error: Error & { type?: string }, logger: Logger) {
   if (!window.opener) return;
 
   const errorMsg = channelMsg.error({
@@ -140,6 +147,6 @@ function postSigningError(target: string, error: Error & { type?: string }) {
     message: error.message,
   });
 
-  console.debug(LOG_PREFIX, '→ ERROR posted', errorMsg);
+  logger.debug('→ ERROR posted', errorMsg);
   window.opener.postMessage(errorMsg, target);
 }

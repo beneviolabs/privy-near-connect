@@ -12,6 +12,7 @@ import {
 } from '@/sign-page.errors';
 import { initSigningPage } from '@/sign-page';
 import { buildSignFn } from '@/signing/signer';
+import { LOG_PREFIX } from '@/log';
 
 vi.mock('@/signing/signer', () => ({
   buildSignFn: vi.fn().mockReturnValue(vi.fn()),
@@ -228,6 +229,30 @@ describe('initSigningPage()', () => {
       expect(session.sign).toEqual(expect.any(Function));
     });
 
+    it('does not log signing payloads unless debug is explicitly enabled', async () => {
+      const debug = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
+      mockOpener();
+      const promise = initSigningPage(mockPrivy(), DEFAULT_OPTIONS);
+      await flushPrivyIframeLoad();
+      dispatchSignRequest();
+
+      await promise;
+
+      expect(debug).not.toHaveBeenCalled();
+    });
+
+    it('logs detailed signing payloads when debug is enabled', async () => {
+      const debug = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
+      mockOpener();
+      const promise = initSigningPage(mockPrivy(), { ...DEFAULT_OPTIONS, debug: true });
+      await flushPrivyIframeLoad();
+      dispatchSignRequest();
+
+      await promise;
+
+      expect(debug).toHaveBeenCalledWith(LOG_PREFIX, '← SIGN_REQUEST received', TEST_PAYLOAD);
+    });
+
     it('accepts SIGN_REQUEST from any origin when allowedOrigins is dangerouslyAllowAllOrigins', async () => {
       mockOpener();
       const promise = initSigningPage(mockPrivy(), {
@@ -346,6 +371,7 @@ describe('initSigningPage()', () => {
         TEST_PAYLOAD,
         undefined,
         undefined,
+        false,
       );
     });
   });

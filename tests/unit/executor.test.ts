@@ -47,6 +47,7 @@ function sendReady() {
 type WalletManifestwithMetadata = WalletManifest & {
   metadata: {
     signPageURL: string;
+    debug?: boolean;
   };
 };
 
@@ -142,6 +143,42 @@ describe('requestWallet', () => {
 
     send(channelMsg.error({ message: 'cleanup', type: 'SigningError' }));
     await promise.catch(() => {});
+  });
+
+  it('does not log request or result objects by default', async () => {
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    const promise = wallet.signMessage(PARAMS);
+    sendReady();
+    send(channelMsg.result(TEST_SIGNED_ACCOUNT.signedMessage));
+
+    await promise;
+
+    expect(debug).not.toHaveBeenCalled();
+    expect(log).not.toHaveBeenCalled();
+  });
+
+  it('logs request and message objects when manifest debug is enabled', async () => {
+    wallet.manifest = {
+      metadata: { signPageURL: TEST_SIGN_PAGE_URL, debug: true },
+    } as WalletManifestwithMetadata;
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
+    const promise = wallet.signMessage(PARAMS);
+    sendReady();
+    send(channelMsg.result(TEST_SIGNED_ACCOUNT.signedMessage));
+
+    await promise;
+
+    expect(debug).toHaveBeenCalledWith(
+      '[privy-near-connect-executor]',
+      'Sending SIGN_REQUEST',
+      expect.objectContaining({ kind: 'signMessage' }),
+    );
+    expect(debug).toHaveBeenCalledWith(
+      '[privy-near-connect-executor]',
+      'Received message from sign page',
+      expect.objectContaining({ type: 'RESULT' }),
+    );
   });
 
   it('resolves with the result from RESULT', async () => {

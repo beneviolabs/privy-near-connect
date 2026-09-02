@@ -63,7 +63,8 @@ For development setup, release process, and troubleshooting see [CONTRIBUTING.md
         ]
       },
       "metadata": {
-        "signPageURL": "https://yourdapp.com/sign"
+        "signPageURL": "https://yourdapp.com/sign",
+        "debug": false
       }
     },
     ]
@@ -77,6 +78,11 @@ For development setup, release process, and troubleshooting see [CONTRIBUTING.md
   > `.../refs/heads/release/executor.js` — a branch URL silently picks up whatever is pushed
   > to that branch next. Bump the SHA deliberately when you adopt a new executor build, and
   > treat write access to the branch it is built from as security-sensitive.
+
+  `metadata.debug` is an optional runtime switch for executor diagnostics. It defaults to
+  `false`; set it to `true` temporarily when debugging popup handshakes or executor messages.
+  Debug logging can include signing request and response objects, so do not enable it in
+  production.
 
   ii. Initialize near-connect in your dApp and specify the wallet from the manifest:
 
@@ -137,7 +143,10 @@ For development setup, release process, and troubleshooting see [CONTRIBUTING.md
     let session;
 
     // You may also specify the wallet to be used for signing here if a user has multiple wallets in their Privy account. Check the jsdoc for this function for details.
-    initSigningPage(privyClient, { allowedOrigins: ['https://yourdapp.example.com'] }).then((s) => { session = s });
+    initSigningPage(privyClient, {
+      allowedOrigins: ['https://yourdapp.example.com'],
+      debug: false,
+    }).then((s) => { session = s });
 
     return ready ? (
       <div>
@@ -164,9 +173,19 @@ For development setup, release process, and troubleshooting see [CONTRIBUTING.md
 
   export default function SignPage() {
     ...
-    return <SignPagePlugin privy={privyClient} options={{ allowedOrigins: ['https://yourdapp.example.com'] }} />;
+    return (
+      <SignPagePlugin
+        privy={privyClient}
+        options={{ allowedOrigins: ['https://yourdapp.example.com'], debug: false }}
+      />
+    );
   }
   ```
+
+  `SignPageOptions.debug` is an optional runtime switch for popup, signing, and account
+  diagnostics. It defaults to `false`; set it to `true` only while troubleshooting. Detailed
+  debug output may include signing payloads, linked-account data, and result or error objects,
+  so leave it disabled in production.
 
 This page will be opened in a popup by the near-connect SDK when a signing request is made from the dApp.
 
