@@ -32,6 +32,8 @@ export type TransactionView = {
   transactions: TransactionGroup[];
   /** Public keys this request grants full (unrestricted) access to, if any. */
   fullAccessKeys: string[];
+  /** Whether a contract call grants the Peerfolio signer persistent full access. */
+  peerfolioSignerFullAccess: boolean;
   /** Signing account, shown in the Advanced Details section. */
   accountId?: string;
 };
@@ -91,6 +93,7 @@ export function buildTransactionView(
     summaryRows: buildTransactionSummaryRows(primaryAction, transactions, network),
     transactions,
     fullAccessKeys: collectFullAccessKeys(allActions),
+    peerfolioSignerFullAccess: allActions.some(isPeerfolioSignerGrant),
     accountId: currentAccountId,
   };
 }
@@ -128,6 +131,8 @@ export function TransactionSections({ request }: TransactionSectionsProps) {
       {request.fullAccessKeys.length > 0 ? (
         <FullAccessKeyGrant publicKeys={request.fullAccessKeys} />
       ) : null}
+
+      {request.peerfolioSignerFullAccess ? <PeerfolioSignerGrant /> : null}
 
       {request.summaryRows.length > 0 ? (
         <section className="pnc-section">
@@ -190,6 +195,26 @@ function FullAccessKeyGrant({ publicKeys }: { publicKeys: string[] }) {
         icon={<ExclamationTriangleIcon />}
       />
     </Section>
+  );
+}
+
+/** Prominently discloses the semantic full-access grant made by Peerfolio onboarding/export. */
+function PeerfolioSignerGrant() {
+  return (
+    <Section title="And authorize the Peerfolio signer" surface="none">
+      <ApprovalNotice
+        tone="warning"
+        text="The Peerfolio signer gets full access to this account and can act without repeated approval. You can remove this access at any time from Settings."
+        icon={<ExclamationTriangleIcon />}
+      />
+    </Section>
+  );
+}
+
+function isPeerfolioSignerGrant(action: ConnectorAction): boolean {
+  return (
+    action.type === 'FunctionCall' &&
+    action.params.methodName === 'add_full_access_key_and_register_with_intents'
   );
 }
 

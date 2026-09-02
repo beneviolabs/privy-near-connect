@@ -7,6 +7,7 @@ import {
   WildcardOriginError,
 } from '@/sign-page.errors';
 import { buildSignFn } from '@/signing/signer';
+import { canonicalizeSigningPayload } from '@/signing/payload';
 import { channelMsg, CHANNEL_SOURCE } from '@/types';
 import type { ChannelMsg, SignPageOptions, SignPageSession, SigningPayload } from '@/types';
 import { LOG_PREFIX } from '@/log';
@@ -160,11 +161,12 @@ function abortReason(signal?: AbortSignal): unknown {
  *
  * @param privy - An instantiated and initialized Privy client.
  * @param options - Timeout, origin policy, and signing overrides.
- * @returns A session containing the received payload and a `sign` callback.
+ * @returns A session containing the validated, canonical payload and a `sign` callback.
  * @throws {@link NoOpenerError} If `window.opener` is not available.
  * @throws {@link MissingAllowedOriginsError} If `allowedOrigins` was omitted.
  * @throws {@link WildcardOriginError} If `allowedOrigins` contains `'*'`.
  * @throws {@link TimeoutError} If no `SIGN_REQUEST` arrives before timeout.
+ * @throws An `InvalidSigningPayloadError` if the request kind or one of its actions is malformed or unsupported.
  */
 export const initSigningPage = async (
   privy: Privy,
@@ -184,11 +186,12 @@ export const initSigningPage = async (
   (window.opener as Window).postMessage(READY_MESSAGE, '*');
   console.debug(LOG_PREFIX, '→ READY posted to *');
 
-  const { payload, targetOrigin } = await waitForOpenerSignRequest(
+  const { payload: receivedPayload, targetOrigin } = await waitForOpenerSignRequest(
     options.allowedOrigins,
     options.timeout ?? DEFAULT_SIGN_REQUEST_TIMEOUT_MS,
     options.signal,
   );
+  const payload = canonicalizeSigningPayload(receivedPayload);
 
   return {
     payload,

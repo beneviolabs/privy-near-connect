@@ -2,9 +2,7 @@ import { PublicKey } from '@near-js/crypto';
 import { base58 } from '@scure/base';
 import { actions, PublicKey as NearPublicKey } from 'near-api-js';
 import type { Action } from 'near-api-js';
-import type { SignAndSendTransactionParams } from '@hot-labs/near-connect';
-
-type ActionItem = SignAndSendTransactionParams['actions'][number];
+import type { ConnectorAction } from '@hot-labs/near-connect/build/actions/types.js';
 
 /**
  * Derive NEAR PublicKey from a Privy implicit account ID.
@@ -29,62 +27,77 @@ export function hexSignatureToBytes(hexSignature: string): Uint8Array {
 /**
  * Converts a `ConnectorAction` or native near-api-js `Action` to a near-api-js `Action`.
  *
- * `ConnectorAction` (from `@hot-labs/near-connect`) has a `type` string discriminant;
- * native near-api-js `Action` objects do not, so the two are distinguished via `'type' in action`.
+ * `ConnectorAction` (from `@hot-labs/near-connect`) has an own `type` string
+ * discriminant; native near-api-js `Action` objects do not.
  *
  * @param action - A connector action or a native near-api-js action.
  * @returns The equivalent near-api-js `Action`.
  */
-export function toNearAction(action: ActionItem): Action {
-  if (!('type' in action)) return action as Action;
+export function toNearAction(action: unknown): Action {
+  if (typeof action !== 'object' || action === null) {
+    throw new Error('Action must be an object');
+  }
+  if (!Object.prototype.hasOwnProperty.call(action, 'type')) return action as Action;
 
-  switch (action.type) {
+  const connectorAction = action as ConnectorAction;
+
+  switch (connectorAction.type) {
     case 'CreateAccount':
       return actions.createAccount();
     case 'DeployContract':
-      return actions.deployContract(action.params.code);
+      return actions.deployContract(connectorAction.params.code);
     case 'FunctionCall':
       return actions.functionCall(
-        action.params.methodName,
-        action.params.args,
-        BigInt(action.params.gas),
-        BigInt(action.params.deposit),
+        connectorAction.params.methodName,
+        connectorAction.params.args,
+        BigInt(connectorAction.params.gas),
+        BigInt(connectorAction.params.deposit),
       );
     case 'Transfer':
-      return actions.transfer(BigInt(action.params.deposit));
+      return actions.transfer(BigInt(connectorAction.params.deposit));
     case 'Stake':
       return actions.stake(
-        BigInt(action.params.stake),
-        NearPublicKey.fromString(action.params.publicKey),
+        BigInt(connectorAction.params.stake),
+        NearPublicKey.fromString(connectorAction.params.publicKey),
       );
     case 'AddKey': {
-      const pk = NearPublicKey.fromString(action.params.publicKey);
-      const { permission } = action.params.accessKey;
-      if (permission === 'FullAccess') return actions.addFullAccessKey(pk);
-      return actions.addFunctionCallAccessKey(
-        pk,
-        permission.receiverId,
-        permission.methodNames ?? [],
-        permission.allowance !== undefined ? BigInt(permission.allowance) : undefined,
-      );
+      const pk = NearPublicKey.fromString(connectorAction.params.publicKey);
+      const { permission } = connectorAction.params.accessKey;
+      const nonce = BigInt(connectorAction.params.accessKey.nonce ?? 0);
+      const nearAction =
+        permission === 'FullAccess'
+          ? actions.addFullAccessKey(pk)
+          : actions.addFunctionCallAccessKey(
+              pk,
+              permission.receiverId,
+              permission.methodNames ?? [],
+              permission.allowance !== undefined ? BigInt(permission.allowance) : undefined,
+            );
+      nearAction.addKey!.accessKey.nonce = nonce;
+      return nearAction;
     }
     case 'DeleteKey':
-      return actions.deleteKey(NearPublicKey.fromString(action.params.publicKey));
+      return actions.deleteKey(NearPublicKey.fromString(connectorAction.params.publicKey));
     case 'DeleteAccount':
-      return actions.deleteAccount(action.params.beneficiaryId);
+      return actions.deleteAccount(connectorAction.params.beneficiaryId);
     case 'UseGlobalContract': {
-      const id = action.params.contractIdentifier;
-      return actions.useGlobalContract(
-        'accountId' in id ? { accountId: id.accountId } : { codeHash: id.codeHash },
-      );
+      const id = connectorAction.params.contractIdentifier;
+      if (Object.prototype.hasOwnProperty.call(id, 'accountId')) {
+        return actions.useGlobalContract({
+          accountId: (id as { accountId: string }).accountId,
+        });
+      }
+      return actions.useGlobalContract({
+        codeHash: base58.decode((id as { codeHash: string }).codeHash),
+      });
     }
     case 'DeployGlobalContract':
       return actions.deployGlobalContract(
-        action.params.code,
-        action.params.deployMode === 'CodeHash' ? 'codeHash' : 'accountId',
+        connectorAction.params.code,
+        connectorAction.params.deployMode === 'CodeHash' ? 'codeHash' : 'accountId',
       );
     default:
-      throw new Error(`Unsupported action type: ${(action as { type: string }).type}`);
+      throw new Error(`Unsupported action type: ${(connectorAction as { type: string }).type}`);
   }
 }
 

@@ -83,7 +83,11 @@ export function buildSignFn(
       console.debug(LOG_PREFIX, '→ sign() start', { target, kind: payload.kind });
       if (!window.opener) throw new WindowOpenerClosedError();
 
-      if (typeof payload !== 'object' || payload === null || !('kind' in payload)) {
+      if (
+        typeof payload !== 'object' ||
+        payload === null ||
+        !Object.prototype.hasOwnProperty.call(payload, 'kind')
+      ) {
         throw new UnsupportedSigningPayloadError();
       }
 
@@ -92,7 +96,9 @@ export function buildSignFn(
         privyClient: privy,
         wallet: walletToUse,
       };
-      const network = 'network' in payload ? payload.network : undefined;
+      const network = Object.prototype.hasOwnProperty.call(payload, 'network')
+        ? payload.network
+        : undefined;
       const account = new AccountWithPrivySigner(walletConfig, createProvider(network, rpcOptions));
 
       let result: SigningResult;

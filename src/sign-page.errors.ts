@@ -31,3 +31,16 @@ export class TimeoutError extends Error {
     this.name = 'TimeoutError';
   }
 }
+
+/** Thrown when a signing request contains an invalid or unsupported action. */
+export class InvalidSigningPayloadError extends Error {
+  /**
+   * Creates an error describing the rejected portion of the request.
+   *
+   * @param reason - Human-readable reason the signing payload was rejected.
+   */
+  constructor(reason: string) {
+    super(`Invalid signing payload: ${reason}`);
+    this.name = 'InvalidSigningPayloadError';
+  }
+}
