@@ -27,8 +27,8 @@ export function hexSignatureToBytes(hexSignature: string): Uint8Array {
 /**
  * Converts a `ConnectorAction` or native near-api-js `Action` to a near-api-js `Action`.
  *
- * `ConnectorAction` (from `@hot-labs/near-connect`) has a `type` string discriminant;
- * native near-api-js `Action` objects do not, so the two are distinguished via `'type' in action`.
+ * `ConnectorAction` (from `@hot-labs/near-connect`) has an own `type` string
+ * discriminant; native near-api-js `Action` objects do not.
  *
  * @param action - A connector action or a native near-api-js action.
  * @returns The equivalent near-api-js `Action`.
@@ -37,7 +37,7 @@ export function toNearAction(action: unknown): Action {
   if (typeof action !== 'object' || action === null) {
     throw new Error('Action must be an object');
   }
-  if (!('type' in action)) return action as Action;
+  if (!Object.prototype.hasOwnProperty.call(action, 'type')) return action as Action;
 
   const connectorAction = action as ConnectorAction;
 
@@ -63,13 +63,18 @@ export function toNearAction(action: unknown): Action {
     case 'AddKey': {
       const pk = NearPublicKey.fromString(connectorAction.params.publicKey);
       const { permission } = connectorAction.params.accessKey;
-      if (permission === 'FullAccess') return actions.addFullAccessKey(pk);
-      return actions.addFunctionCallAccessKey(
-        pk,
-        permission.receiverId,
-        permission.methodNames ?? [],
-        permission.allowance !== undefined ? BigInt(permission.allowance) : undefined,
-      );
+      const nonce = BigInt(connectorAction.params.accessKey.nonce ?? 0);
+      const nearAction =
+        permission === 'FullAccess'
+          ? actions.addFullAccessKey(pk)
+          : actions.addFunctionCallAccessKey(
+              pk,
+              permission.receiverId,
+              permission.methodNames ?? [],
+              permission.allowance !== undefined ? BigInt(permission.allowance) : undefined,
+            );
+      nearAction.addKey!.accessKey.nonce = nonce;
+      return nearAction;
     }
     case 'DeleteKey':
       return actions.deleteKey(NearPublicKey.fromString(connectorAction.params.publicKey));
@@ -77,9 +82,14 @@ export function toNearAction(action: unknown): Action {
       return actions.deleteAccount(connectorAction.params.beneficiaryId);
     case 'UseGlobalContract': {
       const id = connectorAction.params.contractIdentifier;
-      return actions.useGlobalContract(
-        'accountId' in id ? { accountId: id.accountId } : { codeHash: id.codeHash },
-      );
+      if (Object.prototype.hasOwnProperty.call(id, 'accountId')) {
+        return actions.useGlobalContract({
+          accountId: (id as { accountId: string }).accountId,
+        });
+      }
+      return actions.useGlobalContract({
+        codeHash: base58.decode((id as { codeHash: string }).codeHash),
+      });
     }
     case 'DeployGlobalContract':
       return actions.deployGlobalContract(

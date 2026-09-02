@@ -8,11 +8,49 @@ import { describe, expect, it } from 'vitest';
 
 import { InvalidSigningPayloadError } from '@/sign-page.errors';
 import { canonicalizeSigningPayload } from '@/signing/payload';
+import { toNearAction } from '@/signing/utils';
 import type { SigningPayload } from '@/types';
 
 const PUBLIC_KEY = PublicKey.fromString('ed25519:11111111111111111111111111111111');
 
 describe('canonicalizeSigningPayload()', () => {
+  it('preserves native function-call argument bytes through display canonicalization and signing', () => {
+    const nativeAction = actionCreators.functionCall(
+      'method',
+      { receiver_id: 'alice.near', amount: '42' },
+      10n,
+      1n,
+    );
+    const payload = canonicalizeSigningPayload(
+      structuredClone({
+        kind: 'signAndSendTransaction',
+        receiverId: 'contract.near',
+        actions: [nativeAction],
+      }),
+    );
+
+    if (payload.kind !== 'signAndSendTransaction') throw new Error('wrong payload kind');
+    const rebuilt = toNearAction(payload.actions[0]);
+
+    expect(Array.from(rebuilt.functionCall?.args ?? [])).toEqual(
+      Array.from(nativeAction.functionCall?.args ?? []),
+    );
+  });
+
+  it('does not accept an inherited connector action discriminator', () => {
+    const action = Object.assign(Object.create({ type: 'Transfer' }), {
+      params: { deposit: '1' },
+    });
+
+    expect(() =>
+      canonicalizeSigningPayload({
+        kind: 'signAndSendTransaction',
+        receiverId: 'receiver.near',
+        actions: [action],
+      }),
+    ).toThrow(InvalidSigningPayloadError);
+  });
+
   it('accepts every supported structured-cloned native @near-js action shape', () => {
     const nativeActions = [
       actionCreators.createAccount(),
