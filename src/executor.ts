@@ -32,7 +32,11 @@ type WalletManifestwithMetadata = WalletManifest & {
   };
 };
 
-function requestWallet<T>(signPageURL: string, payload: SigningPayload, debug = false): Promise<T> {
+function requestWallet<T>(
+  metadata: WalletManifestwithMetadata['metadata'],
+  payload: SigningPayload,
+): Promise<T> {
+  const { signPageURL, debug = false } = metadata;
   const logger = createLogger(LOG_PREFIX, debug);
 
   return new Promise((resolve, reject) => {
@@ -114,11 +118,10 @@ const wallet: NearWalletBase & { manifest: WalletManifestwithMetadata } = {
   manifest: {} as WalletManifestwithMetadata,
 
   async signIn(data?: SignInParams): Promise<Account[]> {
-    const accounts = await requestWallet<Account[]>(
-      this.manifest.metadata.signPageURL,
-      { kind: 'signIn', ...data },
-      this.manifest.metadata.debug,
-    );
+    const accounts = await requestWallet<Account[]>(this.manifest.metadata, {
+      kind: 'signIn',
+      ...data,
+    });
     const accountId = accounts[0]?.accountId;
 
     if (accountId) {
@@ -131,14 +134,10 @@ const wallet: NearWalletBase & { manifest: WalletManifestwithMetadata } = {
   async signInAndSignMessage(
     data: SignInAndSignMessageParams,
   ): Promise<AccountWithSignedMessage[]> {
-    const accounts = await requestWallet<AccountWithSignedMessage[]>(
-      this.manifest.metadata.signPageURL,
-      {
-        kind: 'signInAndSignMessage',
-        ...data,
-      },
-      this.manifest.metadata.debug,
-    );
+    const accounts = await requestWallet<AccountWithSignedMessage[]>(this.manifest.metadata, {
+      kind: 'signInAndSignMessage',
+      ...data,
+    });
     const accountId = accounts[0]?.accountId;
 
     if (accountId) {
@@ -166,50 +165,34 @@ const wallet: NearWalletBase & { manifest: WalletManifestwithMetadata } = {
   },
 
   async signMessage(params: SignMessageParams): Promise<SignedMessage> {
-    return requestWallet(
-      this.manifest.metadata.signPageURL,
-      { kind: 'signMessage', ...params },
-      this.manifest.metadata.debug,
-    );
+    return requestWallet(this.manifest.metadata, { kind: 'signMessage', ...params });
   },
 
   async signAndSendTransaction(
     params: SignAndSendTransactionParams,
   ): Promise<FinalExecutionOutcome> {
-    return requestWallet(
-      this.manifest.metadata.signPageURL,
-      {
-        kind: 'signAndSendTransaction',
-        ...params,
-      },
-      this.manifest.metadata.debug,
-    );
+    return requestWallet(this.manifest.metadata, {
+      kind: 'signAndSendTransaction',
+      ...params,
+    });
   },
 
   async signAndSendTransactions(
     params: SignAndSendTransactionsParams,
   ): Promise<FinalExecutionOutcome[]> {
-    return requestWallet(
-      this.manifest.metadata.signPageURL,
-      {
-        kind: 'signAndSendTransactions',
-        ...params,
-      },
-      this.manifest.metadata.debug,
-    );
+    return requestWallet(this.manifest.metadata, {
+      kind: 'signAndSendTransactions',
+      ...params,
+    });
   },
 
   async signDelegateActions(
     params: SignDelegateActionsParams,
   ): Promise<SignDelegateActionsResponse> {
-    return requestWallet(
-      this.manifest.metadata.signPageURL,
-      {
-        kind: 'signDelegateActions',
-        ...params,
-      },
-      this.manifest.metadata.debug,
-    );
+    return requestWallet(this.manifest.metadata, {
+      kind: 'signDelegateActions',
+      ...params,
+    });
   },
 };
 

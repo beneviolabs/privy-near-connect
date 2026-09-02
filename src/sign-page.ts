@@ -170,7 +170,7 @@ export const initSigningPage = async (
   privy: Privy,
   options: SignPageOptions,
 ): Promise<SignPageSession> => {
-  const logger = createLogger(LOG_PREFIX, options.debug ?? false);
+  const logger = createLogger(LOG_PREFIX, options.debug);
   logger.debug('→ initSigningPage start');
   if (!window.opener) throw new NoOpenerError();
   if (options.allowedOrigins === undefined) throw new MissingAllowedOriginsError();
@@ -201,7 +201,7 @@ export const initSigningPage = async (
       payload,
       options.wallet,
       options.rpcOptions,
-      options.debug ?? false,
+      options.debug,
     ),
   };
 };
