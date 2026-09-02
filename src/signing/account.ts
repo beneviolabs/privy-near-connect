@@ -33,6 +33,9 @@ export type RpcOptions = {
   headers?: Record<string, string | number>;
 };
 
+type NearApiSignAndSendTransactionParams = Parameters<Account['signAndSendTransaction']>[0];
+type NearApiSignAndSendTransactionsParams = Parameters<Account['signAndSendTransactions']>[0];
+
 /**
  * Privy wallet credentials used for embedded-wallet signing.
  *
@@ -192,16 +195,23 @@ export class AccountWithPrivySigner extends Account {
 
   async signOut(_data?: { network?: Network }): Promise<void> {}
 
-  async signAndSendTransaction(params: SignAndSendTransactionParams) {
+  async signAndSendTransaction(
+    params: SignAndSendTransactionParams | NearApiSignAndSendTransactionParams,
+  ) {
     return super.signAndSendTransaction({
+      ...params,
       receiverId: params.receiverId,
       actions: params.actions.map(toNearAction),
     });
   }
 
-  async signAndSendTransactions(params: SignAndSendTransactionsParams) {
+  async signAndSendTransactions(
+    params: SignAndSendTransactionsParams | NearApiSignAndSendTransactionsParams,
+  ) {
     return super.signAndSendTransactions({
+      ...params,
       transactions: params.transactions.map((tx) => ({
+        ...tx,
         receiverId: tx.receiverId,
         actions: tx.actions.map(toNearAction),
       })),

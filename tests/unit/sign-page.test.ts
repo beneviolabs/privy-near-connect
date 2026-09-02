@@ -1,10 +1,13 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type Privy from '@privy-io/js-sdk-core';
+import { PublicKey } from '@near-js/crypto';
+import { actionCreators } from '@near-js/transactions';
 import type { SignPageOptions, SigningPayload } from '@/types';
 import { channelMsg } from '@/types';
 
 import {
+  InvalidSigningPayloadError,
   MissingAllowedOriginsError,
   NoOpenerError,
   TimeoutError,
@@ -12,6 +15,8 @@ import {
 } from '@/sign-page.errors';
 import { initSigningPage } from '@/sign-page';
 import { buildSignFn } from '@/signing/signer';
+import { buildTransactionView } from '@/sign-page-plugin/screens/TransactionSections';
+import { summarizeAction } from '@/sign-page-plugin/utils/actions';
 
 vi.mock('@/signing/signer', () => ({
   buildSignFn: vi.fn().mockReturnValue(vi.fn()),
@@ -226,6 +231,194 @@ describe('initSigningPage()', () => {
       const session = await promise;
       expect(session.payload).toEqual(TEST_PAYLOAD);
       expect(session.sign).toEqual(expect.any(Function));
+    });
+
+    it('canonicalizes structured-cloned native function-call, transfer, and full-access AddKey actions once for display and signing', async () => {
+      const publicKey = PublicKey.fromString('ed25519:11111111111111111111111111111111');
+      const nativePayload = structuredClone({
+        kind: 'signAndSendTransaction',
+        receiverId: 'trading.near',
+        actions: [
+          actionCreators.functionCall(
+            'add_full_access_key_and_register_with_intents',
+            { public_key: publicKey.toString() },
+            20_000_000_000_000n,
+            1n,
+          ),
+          actionCreators.transfer(2_000_000_000_000_000_000_000_000n),
+          actionCreators.addKey(publicKey, actionCreators.fullAccessKey()),
+        ],
+      }) as SigningPayload;
+      mockOpener();
+      const promise = initSigningPage(mockPrivy(), DEFAULT_OPTIONS);
+      await flushPrivyIframeLoad();
+      dispatchSignRequest(nativePayload);
+
+      const session = await promise;
+      expect(session.payload).not.toBe(nativePayload);
+      expect(
+        vi.mocked(buildSignFn).mock.calls[vi.mocked(buildSignFn).mock.calls.length - 1]?.[2],
+      ).toBe(session.payload);
+      expect(session.payload).toMatchObject({
+        kind: 'signAndSendTransaction',
+        actions: [
+          {
+            type: 'FunctionCall',
+            params: {
+              methodName: 'add_full_access_key_and_register_with_intents',
+              gas: '20000000000000',
+              deposit: '1',
+            },
+          },
+          { type: 'Transfer', params: { deposit: '2000000000000000000000000' } },
+          {
+            type: 'AddKey',
+            params: {
+              publicKey: publicKey.toString(),
+              accessKey: { nonce: 0, permission: 'FullAccess' },
+            },
+          },
+        ],
+      });
+
+      if (session.payload.kind !== 'signAndSendTransaction') throw new Error('wrong payload kind');
+      const request = buildTransactionView(session.payload, 'owner.near');
+      const functionCall = summarizeAction(request.transactions[0]!.actions[0]!);
+      const transfer = summarizeAction(request.transactions[0]!.actions[1]!);
+      expect(functionCall).toMatchObject({
+        type: 'FunctionCall',
+        method: 'add_full_access_key_and_register_with_intents',
+        deposit: '<0.000001',
+        gas: '20 TGas',
+      });
+      expect(functionCall.paramsJson).toContain(publicKey.toString());
+      expect(transfer).toMatchObject({ type: 'Transfer', amount: '2' });
+      expect(request.fullAccessKeys).toEqual([publicKey.toString()]);
+      expect(request.peerfolioSignerFullAccess).toBe(true);
+    });
+
+    it('canonicalizes the structured-cloned export-like batch sent through the popup', async () => {
+      const publicKey = PublicKey.fromString('ed25519:11111111111111111111111111111111');
+      const exportPayload = structuredClone({
+        kind: 'signAndSendTransactions',
+        transactions: [
+          {
+            receiverId: 'trading.near',
+            actions: [
+              actionCreators.functionCall(
+                'add_full_access_key_and_register_with_intents',
+                { public_key: publicKey.toString() },
+                20_000_000_000_000n,
+                1n,
+              ),
+            ],
+          },
+          {
+            receiverId: 'owner.near',
+            actions: [actionCreators.addKey(publicKey, actionCreators.fullAccessKey())],
+          },
+          {
+            receiverId: 'intents.near',
+            actions: [
+              actionCreators.functionCall(
+                'add_public_key',
+                { public_key: publicKey.toString() },
+                20_000_000_000_000n,
+                1n,
+              ),
+            ],
+          },
+        ],
+      }) as SigningPayload;
+      mockOpener();
+      const promise = initSigningPage(mockPrivy(), DEFAULT_OPTIONS);
+      await flushPrivyIframeLoad();
+      dispatchSignRequest(exportPayload);
+
+      const session = await promise;
+      if (session.payload.kind !== 'signAndSendTransactions') throw new Error('wrong payload kind');
+      const request = buildTransactionView(session.payload, 'owner.near');
+      expect(request.transactions.map((transaction) => transaction.actions[0]?.type)).toEqual([
+        'FunctionCall',
+        'AddKey',
+        'FunctionCall',
+      ]);
+      expect(request.fullAccessKeys).toEqual([publicKey.toString()]);
+      expect(request.peerfolioSignerFullAccess).toBe(true);
+      expect(
+        vi.mocked(buildSignFn).mock.calls[vi.mocked(buildSignFn).mock.calls.length - 1]?.[2],
+      ).toBe(session.payload);
+    });
+
+    it('canonicalizes the structured-cloned onboarding batch sent through the popup', async () => {
+      const onboardingPayload = structuredClone({
+        kind: 'signAndSendTransactions',
+        transactions: [
+          {
+            receiverId: 'wrap.near',
+            actions: [
+              actionCreators.functionCall(
+                'storage_deposit',
+                { account_id: 'trading.near', registration_only: true },
+                20_000_000_000_000n,
+                1_250_000_000_000_000_000_000n,
+              ),
+            ],
+          },
+          {
+            receiverId: 'trading.near',
+            actions: [
+              actionCreators.functionCall(
+                'add_full_access_key_and_register_with_intents',
+                { public_key: 'ed25519:11111111111111111111111111111111' },
+                20_000_000_000_000n,
+                1n,
+              ),
+              actionCreators.functionCall(
+                'add_authorized_user',
+                { account_id: 'agent.near' },
+                20_000_000_000_000n,
+                0n,
+              ),
+            ],
+          },
+          {
+            receiverId: 'deposit.near',
+            actions: [actionCreators.transfer(3_000_000_000_000_000_000_000_000n)],
+          },
+        ],
+      }) as SigningPayload;
+      mockOpener();
+      const promise = initSigningPage(mockPrivy(), DEFAULT_OPTIONS);
+      await flushPrivyIframeLoad();
+      dispatchSignRequest(onboardingPayload);
+
+      const session = await promise;
+      if (session.payload.kind !== 'signAndSendTransactions') throw new Error('wrong payload kind');
+      const request = buildTransactionView(session.payload, 'owner.near');
+      expect(request.transactions.flatMap((transaction) => transaction.actions)).toHaveLength(4);
+      expect(request.peerfolioSignerFullAccess).toBe(true);
+      expect(summarizeAction(request.transactions[2]!.actions[0]!)).toMatchObject({ amount: '3' });
+    });
+
+    it.each([
+      {
+        name: 'malformed connector action',
+        action: { type: 'FunctionCall', params: { methodName: 'method', gas: '1', deposit: '0' } },
+      },
+      { name: 'unsupported native action', action: { enum: 'signedDelegate', signedDelegate: {} } },
+    ])('rejects a $name before it can be displayed or signed', async ({ action }) => {
+      mockOpener();
+      const promise = initSigningPage(mockPrivy(), DEFAULT_OPTIONS);
+      await flushPrivyIframeLoad();
+      dispatchSignRequest({
+        kind: 'signAndSendTransaction',
+        receiverId: 'contract.near',
+        actions: [action],
+      } as unknown as SigningPayload);
+
+      await expect(promise).rejects.toBeInstanceOf(InvalidSigningPayloadError);
+      expect(buildSignFn).not.toHaveBeenCalled();
     });
 
     it('accepts SIGN_REQUEST from any origin when allowedOrigins is dangerouslyAllowAllOrigins', async () => {

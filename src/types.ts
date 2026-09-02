@@ -135,7 +135,7 @@ export type SignPageOptions = {
 
 /** Session returned by `initSigningPage` after receiving a signing payload. */
 export type SignPageSession = {
-  /** Payload received from the opener via `SIGN_REQUEST`. */
+  /** Validated payload received from the opener, with transaction actions canonicalized to connector actions. */
   payload: SigningPayload;
   /** Origin of the window that sent `SIGN_REQUEST`. Useful for showing the requesting app to the user. */
   targetOrigin: string;
