@@ -9,7 +9,7 @@ import {
 import { buildSignFn } from '@/signing/signer';
 import { channelMsg, CHANNEL_SOURCE } from '@/types';
 import type { ChannelMsg, SignPageOptions, SignPageSession, SigningPayload } from '@/types';
-import { LOG_PREFIX } from '@/log';
+import { createLogger, LOG_PREFIX, type Logger } from '@/log';
 
 export type { SignPageOptions, SignPageSession } from '@/types';
 
@@ -17,7 +17,11 @@ const DEFAULT_SIGN_REQUEST_TIMEOUT_MS = 30_000;
 const READY_MESSAGE = channelMsg.ready();
 let cleanupMountedIframe: (() => void) | undefined;
 
-function mountPrivyIframe(privy: Privy, signal?: AbortSignal): Promise<() => void> {
+function mountPrivyIframe(
+  privy: Privy,
+  signal: AbortSignal | undefined,
+  logger: Logger,
+): Promise<() => void> {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) {
       reject(abortReason(signal));
@@ -26,12 +30,12 @@ function mountPrivyIframe(privy: Privy, signal?: AbortSignal): Promise<() => voi
 
     const mountedIframe = document.querySelector('iframe[data-privy-embed]');
     if (mountedIframe && cleanupMountedIframe) {
-      console.debug(LOG_PREFIX, '↺ Reusing existing Privy iframe');
+      logger.debug('↺ Reusing existing Privy iframe');
       resolve(cleanupMountedIframe);
       return;
     }
 
-    console.debug(LOG_PREFIX, '↻ Mounting Privy iframe');
+    logger.debug('↻ Mounting Privy iframe');
     cleanupMountedIframe = undefined;
 
     const iframe = document.createElement('iframe');
@@ -49,7 +53,7 @@ function mountPrivyIframe(privy: Privy, signal?: AbortSignal): Promise<() => voi
     const cleanup = () => {
       if (cleanedUp) return;
       cleanedUp = true;
-      console.debug(LOG_PREFIX, '↻ Cleaning up existing Privy iframe');
+      logger.debug('↻ Cleaning up existing Privy iframe');
       window.removeEventListener('message', onMessage);
       signal?.removeEventListener('abort', onAbort);
       iframe.remove();
@@ -57,7 +61,7 @@ function mountPrivyIframe(privy: Privy, signal?: AbortSignal): Promise<() => voi
     };
 
     const onAbort = () => {
-      console.debug(LOG_PREFIX, '✗ Privy iframe mount aborted');
+      logger.debug('✗ Privy iframe mount aborted');
       cleanup();
       reject(abortReason(signal));
     };
@@ -72,7 +76,7 @@ function mountPrivyIframe(privy: Privy, signal?: AbortSignal): Promise<() => voi
             iframe.src = privy.embeddedWallet.getURL();
           },
         });
-        console.debug(LOG_PREFIX, '✓ Privy iframe loaded and message poster set');
+        logger.debug('✓ Privy iframe loaded and message poster set');
         signal?.removeEventListener('abort', onAbort);
         cleanupMountedIframe = cleanup;
         resolve(cleanup);
@@ -90,6 +94,7 @@ function mountPrivyIframe(privy: Privy, signal?: AbortSignal): Promise<() => voi
 function waitForOpenerSignRequest(
   allowedOrigins: string[] | 'dangerouslyAllowAllOrigins',
   timeout: number,
+  logger: Logger,
   signal?: AbortSignal,
 ): Promise<{ payload: SigningPayload; targetOrigin: string }> {
   return new Promise((resolve, reject) => {
@@ -97,7 +102,7 @@ function waitForOpenerSignRequest(
       reject(abortReason(signal));
       return;
     }
-    console.debug(LOG_PREFIX, '… Waiting for SIGN_REQUEST', { allowedOrigins, timeout });
+    logger.debug('… Waiting for SIGN_REQUEST', { allowedOrigins, timeout });
 
     const cleanup = () => {
       clearTimeout(timeoutId);
@@ -107,7 +112,7 @@ function waitForOpenerSignRequest(
 
     const onAbort = () => {
       cleanup();
-      console.debug(LOG_PREFIX, '✗ SIGN_REQUEST wait aborted');
+      logger.debug('✗ SIGN_REQUEST wait aborted');
       reject(abortReason(signal));
     };
 
@@ -116,21 +121,16 @@ function waitForOpenerSignRequest(
         allowedOrigins !== 'dangerouslyAllowAllOrigins' &&
         !allowedOrigins.includes(event.origin)
       ) {
-        console.debug(
-          LOG_PREFIX,
-          '✗ Ignoring message from disallowed origin',
-          event.data,
-          event.origin,
-        );
+        logger.debug('✗ Ignoring message from disallowed origin', event.data, event.origin);
         return;
       }
       const msg = event.data as ChannelMsg;
       if (!msg || msg.source !== CHANNEL_SOURCE || msg.type !== 'SIGN_REQUEST') {
-        console.debug(LOG_PREFIX, '✗ Ignoring non-SIGN_REQUEST message', msg);
+        logger.debug('✗ Ignoring non-SIGN_REQUEST message', msg);
         return;
       }
       cleanup();
-      console.debug(LOG_PREFIX, '← SIGN_REQUEST received', msg.payload);
+      logger.debug('← SIGN_REQUEST received', msg.payload);
       resolve({ payload: msg.payload, targetOrigin: event.origin });
     };
 
@@ -139,7 +139,7 @@ function waitForOpenerSignRequest(
 
     const timeoutId = setTimeout(() => {
       cleanup();
-      console.debug(LOG_PREFIX, '✗ SIGN_REQUEST timed out', { timeout });
+      logger.debug('✗ SIGN_REQUEST timed out', { timeout });
       reject(new TimeoutError(timeout));
     }, timeout);
   });
@@ -170,7 +170,8 @@ export const initSigningPage = async (
   privy: Privy,
   options: SignPageOptions,
 ): Promise<SignPageSession> => {
-  console.debug(LOG_PREFIX, '→ initSigningPage start');
+  const logger = createLogger(LOG_PREFIX, options.debug);
+  logger.debug('→ initSigningPage start');
   if (!window.opener) throw new NoOpenerError();
   if (options.allowedOrigins === undefined) throw new MissingAllowedOriginsError();
   if (Array.isArray(options.allowedOrigins) && options.allowedOrigins.includes('*')) {
@@ -179,20 +180,28 @@ export const initSigningPage = async (
 
   if (options.signal?.aborted) throw abortReason(options.signal);
 
-  await mountPrivyIframe(privy, options.signal);
+  await mountPrivyIframe(privy, options.signal, logger);
 
   (window.opener as Window).postMessage(READY_MESSAGE, '*');
-  console.debug(LOG_PREFIX, '→ READY posted to *');
+  logger.debug('→ READY posted to *');
 
   const { payload, targetOrigin } = await waitForOpenerSignRequest(
     options.allowedOrigins,
     options.timeout ?? DEFAULT_SIGN_REQUEST_TIMEOUT_MS,
+    logger,
     options.signal,
   );
 
   return {
     payload,
     targetOrigin,
-    sign: buildSignFn(targetOrigin, privy, payload, options.wallet, options.rpcOptions),
+    sign: buildSignFn(
+      targetOrigin,
+      privy,
+      payload,
+      options.wallet,
+      options.rpcOptions,
+      options.debug,
+    ),
   };
 };

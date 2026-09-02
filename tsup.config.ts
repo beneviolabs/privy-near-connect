@@ -28,10 +28,6 @@ const shared: Options = {
       '@': resolve(__dirname, 'src'),
     };
     options.jsx = 'automatic';
-    // Prevent debug logging in production distributed code.
-    if (process.env.NODE_ENV === 'production') {
-      options.pure = ['console.debug'];
-    }
   },
 };
 
