@@ -39,7 +39,7 @@ type CanonicalTransactionGroup = {
  */
 export function canonicalizeSigningPayload(value: unknown): SigningPayload {
   const payload = record(value, 'request');
-  const kind = string(required(payload, 'kind', 'request'), 'request.kind');
+  const kind = field(payload, 'kind', 'request', string);
 
   switch (kind) {
     case 'signAndSendTransaction': {
@@ -50,18 +50,17 @@ export function canonicalizeSigningPayload(value: unknown): SigningPayload {
       return {
         ...payload,
         kind,
-        transactions: canonicalizeTransactionGroups(
-          required(payload, 'transactions', 'request'),
-          'request.transactions',
-        ),
+        transactions: field(payload, 'transactions', 'request', canonicalizeTransactionGroups),
       } as SigningPayload;
     case 'signDelegateActions':
       return {
         ...payload,
         kind,
-        delegateActions: canonicalizeTransactionGroups(
-          required(payload, 'delegateActions', 'request'),
-          'request.delegateActions',
+        delegateActions: field(
+          payload,
+          'delegateActions',
+          'request',
+          canonicalizeTransactionGroups,
         ),
       } as SigningPayload;
     case 'signIn':
@@ -74,20 +73,20 @@ export function canonicalizeSigningPayload(value: unknown): SigningPayload {
 }
 
 function canonicalizeTransactionGroups(value: unknown, path: string): CanonicalTransactionGroup[] {
-  if (!Array.isArray(value)) throw invalid(`${path} must be an array`);
-  return value.map((group, index) => canonicalizeTransactionGroup(group, `${path}[${index}]`));
+  return array(value, path).map((group, index) =>
+    canonicalizeTransactionGroup(group, `${path}[${index}]`),
+  );
 }
 
 function canonicalizeTransactionGroup(value: unknown, path: string): CanonicalTransactionGroup {
   const group = record(value, path);
-  const actions = required(group, 'actions', path);
-  if (!Array.isArray(actions)) throw invalid(`${path}.actions must be an array`);
-
   return {
     ...group,
-    receiverId: string(required(group, 'receiverId', path), `${path}.receiverId`),
-    actions: actions.map((action, index) =>
-      canonicalizeAction(action, `${path}.actions[${index}]`),
+    receiverId: field(group, 'receiverId', path, string),
+    actions: field(group, 'actions', path, (value, actionsPath) =>
+      array(value, actionsPath).map((action, index) =>
+        canonicalizeAction(action, `${actionsPath}[${index}]`),
+      ),
     ),
   };
 }
@@ -97,12 +96,12 @@ function canonicalizeAction(value: unknown, path: string): ConnectorAction {
 
   if (hasOwn(action, 'type')) return canonicalizeConnectorAction(action, path);
 
-  const nativeType = string(required(action, 'enum', path), `${path}.enum`);
+  const nativeType = field(action, 'enum', path, string);
   if (!Object.prototype.hasOwnProperty.call(NATIVE_ACTION_TYPES, nativeType)) {
     throw invalid(`${path} uses unsupported native action "${nativeType}"`);
   }
 
-  const params = record(required(action, nativeType, path), `${path}.${nativeType}`);
+  const params = field(action, nativeType, path, record);
   return canonicalizeKnownAction(
     NATIVE_ACTION_TYPES[nativeType as keyof typeof NATIVE_ACTION_TYPES],
     params,
@@ -112,9 +111,8 @@ function canonicalizeAction(value: unknown, path: string): ConnectorAction {
 }
 
 function canonicalizeConnectorAction(action: UnknownRecord, path: string): ConnectorAction {
-  const type = string(required(action, 'type', path), `${path}.type`);
-  const params =
-    type === 'CreateAccount' ? {} : record(required(action, 'params', path), `${path}.params`);
+  const type = field(action, 'type', path, string);
+  const params = type === 'CreateAccount' ? {} : field(action, 'params', path, record);
   return canonicalizeKnownAction(type, params, path, false);
 }
 
@@ -130,31 +128,33 @@ function canonicalizeKnownAction(
     case 'DeployContract':
       return {
         type,
-        params: { code: bytes(required(params, 'code', path), `${path}.code`) },
+        params: { code: field(params, 'code', path, bytes) },
       };
     case 'FunctionCall':
       return {
         type,
         params: {
-          methodName: string(required(params, 'methodName', path), `${path}.methodName`),
-          args: functionCallArgs(required(params, 'args', path), `${path}.args`, native),
-          gas: unsignedInteger(required(params, 'gas', path), `${path}.gas`),
-          deposit: unsignedInteger(required(params, 'deposit', path), `${path}.deposit`),
+          methodName: field(params, 'methodName', path, string),
+          args: field(params, 'args', path, (value, argsPath) =>
+            functionCallArgs(value, argsPath, native),
+          ),
+          gas: field(params, 'gas', path, unsignedInteger),
+          deposit: field(params, 'deposit', path, unsignedInteger),
         },
       };
     case 'Transfer':
       return {
         type,
         params: {
-          deposit: unsignedInteger(required(params, 'deposit', path), `${path}.deposit`),
+          deposit: field(params, 'deposit', path, unsignedInteger),
         },
       };
     case 'Stake':
       return {
         type,
         params: {
-          stake: unsignedInteger(required(params, 'stake', path), `${path}.stake`),
-          publicKey: publicKey(required(params, 'publicKey', path), `${path}.publicKey`),
+          stake: field(params, 'stake', path, unsignedInteger),
+          publicKey: field(params, 'publicKey', path, publicKey),
         },
       };
     case 'AddKey':
@@ -163,14 +163,14 @@ function canonicalizeKnownAction(
       return {
         type,
         params: {
-          publicKey: publicKey(required(params, 'publicKey', path), `${path}.publicKey`),
+          publicKey: field(params, 'publicKey', path, publicKey),
         },
       };
     case 'DeleteAccount':
       return {
         type,
         params: {
-          beneficiaryId: string(required(params, 'beneficiaryId', path), `${path}.beneficiaryId`),
+          beneficiaryId: field(params, 'beneficiaryId', path, string),
         },
       };
     case 'UseGlobalContract':
@@ -187,24 +187,19 @@ function canonicalizeAddKey(
   path: string,
   native: boolean,
 ): Extract<ConnectorAction, { type: 'AddKey' }> {
-  const accessKey = record(required(params, 'accessKey', path), `${path}.accessKey`);
-  const permission = native
-    ? canonicalizeNativePermission(
-        required(accessKey, 'permission', `${path}.accessKey`),
-        `${path}.accessKey.permission`,
-      )
-    : canonicalizeConnectorPermission(
-        required(accessKey, 'permission', `${path}.accessKey`),
-        `${path}.accessKey.permission`,
-      );
-  const nonceValue = hasOwn(accessKey, 'nonce') ? accessKey.nonce : undefined;
-  const nonce =
-    nonceValue === undefined ? undefined : safeNumber(nonceValue, `${path}.accessKey.nonce`);
+  const accessKey = field(params, 'accessKey', path, record);
+  const permission = field(
+    accessKey,
+    'permission',
+    `${path}.accessKey`,
+    native ? canonicalizeNativePermission : canonicalizeConnectorPermission,
+  );
+  const nonce = optionalField(accessKey, 'nonce', `${path}.accessKey`, safeNumber);
 
   return {
     type: 'AddKey',
     params: {
-      publicKey: publicKey(required(params, 'publicKey', path), `${path}.publicKey`),
+      publicKey: field(params, 'publicKey', path, publicKey),
       accessKey: { ...(nonce === undefined ? {} : { nonce }), permission },
     },
   };
@@ -215,7 +210,7 @@ function canonicalizeNativePermission(
   path: string,
 ): Extract<ConnectorAction, { type: 'AddKey' }>['params']['accessKey']['permission'] {
   const permission = record(value, path);
-  const kind = string(required(permission, 'enum', path), `${path}.enum`);
+  const kind = field(permission, 'enum', path, string);
   if (kind === 'fullAccess') {
     if (!hasValue(permission, 'fullAccess') || hasValue(permission, 'functionCall')) {
       throw invalid(`${path} must contain exactly one permission variant`);
@@ -248,18 +243,12 @@ function canonicalizeFunctionCallPermission(
   Extract<ConnectorAction, { type: 'AddKey' }>['params']['accessKey']['permission'],
   'FullAccess'
 > {
-  const methodNames = hasOwn(permission, 'methodNames') ? permission.methodNames : undefined;
-  if (methodNames !== undefined && !isStringArray(methodNames)) {
-    throw invalid(`${path}.methodNames must be an array of strings`);
-  }
-
-  const allowance = hasOwn(permission, 'allowance') ? permission.allowance : undefined;
+  const methodNames = optionalField(permission, 'methodNames', path, stringArray);
+  const allowance = optionalField(permission, 'allowance', path, unsignedInteger);
 
   return {
-    receiverId: string(required(permission, 'receiverId', path), `${path}.receiverId`),
-    ...(allowance === undefined
-      ? {}
-      : { allowance: unsignedInteger(allowance, `${path}.allowance`) }),
+    receiverId: field(permission, 'receiverId', path, string),
+    ...(allowance === undefined ? {} : { allowance }),
     ...(methodNames === undefined ? {} : { methodNames }),
   };
 }
@@ -269,10 +258,7 @@ function canonicalizeUseGlobalContract(
   path: string,
   native: boolean,
 ): Extract<ConnectorAction, { type: 'UseGlobalContract' }> {
-  const identifier = record(
-    required(params, 'contractIdentifier', path),
-    `${path}.contractIdentifier`,
-  );
+  const identifier = field(params, 'contractIdentifier', path, record);
   return native
     ? canonicalizeNativeGlobalContractIdentifier(identifier, path)
     : canonicalizeConnectorGlobalContractIdentifier(identifier, path);
@@ -283,7 +269,7 @@ function canonicalizeNativeGlobalContractIdentifier(
   path: string,
 ): Extract<ConnectorAction, { type: 'UseGlobalContract' }> {
   const identifierPath = `${path}.contractIdentifier`;
-  const kind = string(required(identifier, 'enum', identifierPath), `${identifierPath}.enum`);
+  const kind = field(identifier, 'enum', identifierPath, string);
   const hasCodeHash = hasValue(identifier, 'CodeHash');
   const hasAccountId = hasValue(identifier, 'AccountId');
 
@@ -291,22 +277,14 @@ function canonicalizeNativeGlobalContractIdentifier(
     throw invalid(`${identifierPath} must contain exactly one identifier variant`);
   }
   if (kind === 'AccountId' && hasAccountId) {
-    return {
-      type: 'UseGlobalContract',
-      params: {
-        contractIdentifier: {
-          accountId: string(identifier.AccountId, `${identifierPath}.AccountId`),
-        },
-      },
-    };
+    return useGlobalContract({
+      accountId: string(identifier.AccountId, `${identifierPath}.AccountId`),
+    });
   }
   if (kind === 'CodeHash' && hasCodeHash) {
     const data = bytes(identifier.CodeHash, `${identifierPath}.CodeHash`);
     if (data.length !== 32) throw invalid(`${identifierPath}.CodeHash must be 32 bytes`);
-    return {
-      type: 'UseGlobalContract',
-      params: { contractIdentifier: { codeHash: base58.encode(data) } },
-    };
+    return useGlobalContract({ codeHash: base58.encode(data) });
   }
   throw invalid(`${identifierPath} uses unsupported or mismatched kind "${kind}"`);
 }
@@ -323,14 +301,9 @@ function canonicalizeConnectorGlobalContractIdentifier(
     throw invalid(`${identifierPath} must contain exactly one identifier variant`);
   }
   if (hasAccountId) {
-    return {
-      type: 'UseGlobalContract',
-      params: {
-        contractIdentifier: {
-          accountId: string(identifier.accountId, `${identifierPath}.accountId`),
-        },
-      },
-    };
+    return useGlobalContract({
+      accountId: string(identifier.accountId, `${identifierPath}.accountId`),
+    });
   }
 
   const encoded = string(identifier.codeHash, `${identifierPath}.codeHash`);
@@ -342,10 +315,16 @@ function canonicalizeConnectorGlobalContractIdentifier(
   }
   if (data.length !== 32) throw invalid(`${identifierPath}.codeHash must decode to 32 bytes`);
 
-  return {
-    type: 'UseGlobalContract',
-    params: { contractIdentifier: { codeHash: base58.encode(data) } },
-  };
+  return useGlobalContract({ codeHash: base58.encode(data) });
+}
+
+function useGlobalContract(
+  contractIdentifier: Extract<
+    ConnectorAction,
+    { type: 'UseGlobalContract' }
+  >['params']['contractIdentifier'],
+): Extract<ConnectorAction, { type: 'UseGlobalContract' }> {
+  return { type: 'UseGlobalContract', params: { contractIdentifier } };
 }
 
 function canonicalizeDeployGlobalContract(
@@ -353,11 +332,9 @@ function canonicalizeDeployGlobalContract(
   path: string,
   native: boolean,
 ): Extract<ConnectorAction, { type: 'DeployGlobalContract' }> {
-  const deployMode = required(params, 'deployMode', path);
-  const rawMode = native
-    ? required(record(deployMode, `${path}.deployMode`), 'enum', `${path}.deployMode`)
-    : deployMode;
-  const mode = string(rawMode, `${path}.deployMode`);
+  const mode = field(params, 'deployMode', path, (value, modePath) =>
+    native ? field(record(value, modePath), 'enum', modePath, string) : string(value, modePath),
+  );
   const canonicalMode =
     mode === 'CodeHash' || mode === 'codeHash'
       ? 'CodeHash'
@@ -368,7 +345,7 @@ function canonicalizeDeployGlobalContract(
   return {
     type: 'DeployGlobalContract',
     params: {
-      code: bytes(required(params, 'code', path), `${path}.code`),
+      code: field(params, 'code', path, bytes),
       deployMode: canonicalMode,
     },
   };
@@ -384,9 +361,9 @@ function publicKey(value: unknown, path: string): string {
   }
 
   const key = record(value, path);
-  const kind = string(required(key, 'enum', path), `${path}.enum`);
-  const encodedKey = record(required(key, kind, path), `${path}.${kind}`);
-  const data = bytes(required(encodedKey, 'data', `${path}.${kind}`), `${path}.${kind}.data`);
+  const kind = field(key, 'enum', path, string);
+  const encodedKey = field(key, kind, path, record);
+  const data = field(encodedKey, 'data', `${path}.${kind}`, bytes);
   if (kind === 'ed25519Key' && data.length === 32) return `ed25519:${base58.encode(data)}`;
   if (kind === 'secp256k1Key' && data.length === 64) return `secp256k1:${base58.encode(data)}`;
   throw invalid(`${path} must be a valid NEAR public key`);
@@ -437,8 +414,16 @@ function string(value: unknown, path: string): string {
   return value;
 }
 
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === 'string');
+function array(value: unknown, path: string): unknown[] {
+  if (!Array.isArray(value)) throw invalid(`${path} must be an array`);
+  return value;
+}
+
+function stringArray(value: unknown, path: string): string[] {
+  if (!Array.isArray(value) || value.some((item) => typeof item !== 'string')) {
+    throw invalid(`${path} must be an array of strings`);
+  }
+  return value as string[];
 }
 
 function hasOwn(record: UnknownRecord, key: string): boolean {
@@ -449,9 +434,31 @@ function hasValue(record: UnknownRecord, key: string): boolean {
   return hasOwn(record, key) && record[key] !== undefined;
 }
 
-function required(record: UnknownRecord, key: string, path: string): unknown {
-  if (!hasOwn(record, key)) throw invalid(`${path}.${key} is required`);
-  return record[key];
+/**
+ * Reads a required own property and validates it, deriving the error path from `key`.
+ *
+ * `hasOwn` rather than `in`, so an inherited prototype property cannot stand in for a
+ * field the signer is about to act on.
+ */
+function field<T>(
+  source: UnknownRecord,
+  key: string,
+  path: string,
+  check: (value: unknown, path: string) => T,
+): T {
+  if (!hasOwn(source, key)) throw invalid(`${path}.${key} is required`);
+  return check(source[key], `${path}.${key}`);
+}
+
+/** As {@link field}, but yields `undefined` when the property is absent or explicitly undefined. */
+function optionalField<T>(
+  source: UnknownRecord,
+  key: string,
+  path: string,
+  check: (value: unknown, path: string) => T,
+): T | undefined {
+  if (!hasValue(source, key)) return undefined;
+  return check(source[key], `${path}.${key}`);
 }
 
 function invalid(reason: string): InvalidSigningPayloadError {
