@@ -125,6 +125,8 @@ export type SignPageOptions = {
   timeout?: number;
   /** Origins from which a `SIGN_REQUEST` is accepted. Pass `'dangerouslyAllowAllOrigins'` to explicitly allow any origin (e.g. for general-purpose wallets). */
   allowedOrigins: string[] | 'dangerouslyAllowAllOrigins';
+  /** Enables detailed popup, signing, and account diagnostics. Defaults to `false`. */
+  debug?: boolean;
   /** Privy NEAR wallet to use during signing. If omitted, the wallet is fetched from `privy.user.get()` during signing. */
   wallet?: PrivyNearWallet;
   /** RPC connection options for signing payloads. Defaults to the public RPC for the payload's `network` value, or `mainnet` when `network` is omitted. */

@@ -195,6 +195,33 @@ describe('buildSignFn()', () => {
     expect(window.close).toHaveBeenCalled();
   });
 
+  it('does not log linked accounts or results by default', async () => {
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
+    const sign = buildSignFn(TEST_TARGET, mockPrivy(), TEST_PAYLOAD);
+
+    await sign();
+
+    expect(debug).not.toHaveBeenCalled();
+  });
+
+  it('retains detailed development logs when debug is enabled', async () => {
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
+    const sign = buildSignFn(TEST_TARGET, mockPrivy(), TEST_PAYLOAD, undefined, undefined, true);
+
+    await sign();
+
+    expect(debug).toHaveBeenCalledWith(
+      '[privy-near-connect]',
+      'User linked accounts fetched',
+      expect.objectContaining({ accounts: expect.any(Array) }),
+    );
+    expect(debug).toHaveBeenCalledWith(
+      '[privy-near-connect]',
+      '→ RESULT posted',
+      channelMsg.result(TEST_RESULT),
+    );
+  });
+
   it('can be called more than once and signs each time', async () => {
     const sign = buildSignFn(TEST_TARGET, mockPrivy(), TEST_PAYLOAD, TEST_WALLET);
 
