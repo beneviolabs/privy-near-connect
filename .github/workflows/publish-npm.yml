@@ -21,7 +21,7 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: 25
+          node-version: 24
           cache: npm
           registry-url: "https://registry.npmjs.org"
 
@@ -46,11 +46,10 @@ jobs:
         id: changesets
         uses: changesets/action@v2
         with:
-          publish: npm run release
-          version: npm run version-packages
-          commit: "chore: version packages"
-          title: "chore: version packages"
-          setupGitUser: false
+          publish-script: npm run release
+          version-script: npm run version-packages
+          commit-message: "chore: version packages"
+          pr-title: "chore: version packages"
         env:
           GITHUB_TOKEN: ${{ steps.deploy-token.outputs.token }}
           npm_config_provenance: "true"
