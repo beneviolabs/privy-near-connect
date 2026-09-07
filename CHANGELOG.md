@@ -1,5 +1,11 @@
 # @peerfolio/privy-near-connect
 
+## 0.0.8
+
+### Patch Changes
+
+- 256469a: Add runtime opt-in debug logging for sign-page and executor diagnostics while keeping production logging disabled by default.
+
 ## 0.0.7
 
 ### Patch Changes
