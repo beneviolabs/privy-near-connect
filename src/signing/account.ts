@@ -21,7 +21,7 @@ import { Account, JsonRpcProvider, PublicKey, Signer, encodeSignedDelegate } fro
 import { signMessage as signNep413Message } from 'near-api-js/nep413';
 import { base64 } from '@scure/base';
 
-import { LOG_PREFIX } from '@/log';
+import type { Logger } from '@/log';
 import { hexSignatureToBytes, publicKeyFromImplicit, toNearAction } from '@/signing/utils';
 import type { PrivyNearWallet } from '@/signing/signer';
 
@@ -44,6 +44,8 @@ export type PrivyConfig = {
   privyClient: Privy;
   /** Linked Privy NEAR wallet metadata used for signing. */
   wallet: PrivyNearWallet;
+  /** Logger configured by the sign page debug option. */
+  logger?: Logger;
 };
 
 const NEAR_RPC_URLS: Record<Network, string> = {
@@ -58,10 +60,14 @@ const NEAR_RPC_URLS: Record<Network, string> = {
  * @param rpcOptions - Optional RPC endpoint overrides.
  * @returns A configured `JsonRpcProvider`.
  */
-export function createProvider(network?: Network, rpcOptions?: RpcOptions): JsonRpcProvider {
+export function createProvider(
+  network?: Network,
+  rpcOptions?: RpcOptions,
+  logger?: Logger,
+): JsonRpcProvider {
   const resolvedNetwork = network ?? 'mainnet';
   const url = rpcOptions?.url ?? NEAR_RPC_URLS[resolvedNetwork];
-  console.debug(LOG_PREFIX, 'Creating JsonRpcProvider', { network: resolvedNetwork, url });
+  logger?.debug('Creating JsonRpcProvider', { network: resolvedNetwork, url });
   return new JsonRpcProvider({ url });
 }
 
@@ -98,7 +104,7 @@ export class PrivySigner extends Signer {
       { wallet_id: this.privyConfig.wallet.id, params: { hash } },
     );
     const signatureBytes = hexSignatureToBytes(hexSignature);
-    console.debug(LOG_PREFIX, 'Privy RawSign succeeded', {
+    this.privyConfig.logger?.debug('Privy RawSign succeeded', {
       signatureLength: signatureBytes.length,
     });
     return signatureBytes;
