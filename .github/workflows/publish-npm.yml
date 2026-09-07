@@ -21,7 +21,7 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version: 25
           cache: npm
           registry-url: "https://registry.npmjs.org"
 
@@ -46,27 +46,27 @@ jobs:
         id: changesets
         uses: changesets/action@v2
         with:
+          github-token: ${{ steps.deploy-token.outputs.token }}
           publish-script: npm run release
           version-script: npm run version-packages
           commit-message: "chore: version packages"
           pr-title: "chore: version packages"
         env:
-          GITHUB_TOKEN: ${{ steps.deploy-token.outputs.token }}
           npm_config_provenance: "true"
 
       - name: Update Release PR title with version
-        if: steps.changesets.outputs.pullRequestNumber != ''
+        if: steps.changesets.outputs.pr-number != ''
         env:
           GH_TOKEN: ${{ steps.deploy-token.outputs.token }}
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          gh pr edit "${{ steps.changesets.outputs.pullRequestNumber }}" --title "chore: release @peerfolio/privy-near-connect v${VERSION}"
+          gh pr edit "${{ steps.changesets.outputs.pr-number }}" --title "chore: release @peerfolio/privy-near-connect v${VERSION}"
 
       - name: Read published version
         if: steps.changesets.outputs.published == 'true'
         id: published-version
         env:
-          PUBLISHED_PACKAGES: ${{ steps.changesets.outputs.publishedPackages }}
+          PUBLISHED_PACKAGES: ${{ steps.changesets.outputs.published-packages }}
         run: |
           VERSION=$(node -e "const packages = JSON.parse(process.env.PUBLISHED_PACKAGES || '[]'); const pkg = packages.find((entry) => entry.name === '@peerfolio/privy-near-connect') ?? packages[0]; if (!pkg?.version) { throw new Error('Missing published package version'); } process.stdout.write(pkg.version);")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
@@ -76,7 +76,7 @@ jobs:
         if: steps.changesets.outputs.published == 'true'
         run: |
           VERSION="${{ steps.published-version.outputs.version }}"
-          PR_NUMBER="${{ steps.changesets.outputs.pullRequestNumber }}"
+          PR_NUMBER="${{ steps.changesets.outputs.pr-number }}"
           CHANGELOG=$(awk "/^## ${VERSION}$/{found=1;next} found && /^## /{exit} found{print}" CHANGELOG.md | sed '/^[[:space:]]*$/d')
           {
             echo "message<<EOF"
