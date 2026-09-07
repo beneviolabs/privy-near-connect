@@ -38,11 +38,22 @@ var channelMsg = {
   })
 };
 
+// src/log.ts
+function createLogger(prefix, enabled = false) {
+  return {
+    debug: (...args) => {
+      if (enabled) console.debug(prefix, ...args);
+    }
+  };
+}
+
 // src/executor.ts
 var LOG_PREFIX = "[privy-near-connect-executor]";
 var READY_TIMEOUT_MS = 3e4;
 var ACCOUNT_ID_STORAGE_KEY = "privy-near-connect:account-id";
-function requestWallet(signPageURL, payload) {
+function requestWallet(metadata, payload) {
+  const { signPageURL, debug = false } = metadata;
+  const logger = createLogger(LOG_PREFIX, debug);
   return new Promise((resolve, reject) => {
     const popup = window.selector.open(signPageURL);
     const cleanup = () => {
@@ -58,16 +69,10 @@ function requestWallet(signPageURL, payload) {
     const handler = (event) => {
       const msg = event.data;
       if (!msg || msg.source !== CHANNEL_SOURCE) return;
-      /* @__PURE__ */ console.debug(
-        LOG_PREFIX,
-        "Received message from sign page",
-        event.data,
-        "origin:",
-        event.origin
-      );
+      logger.debug("Received message from sign page", event.data);
       if (msg.type === "READY") {
         clearTimeout(readyTimeoutId);
-        console.log(LOG_PREFIX, "Sign page is ready, sending SIGN_REQUEST", payload);
+        logger.debug("Sending SIGN_REQUEST", payload);
         popup.postMessage(channelMsg.signRequest(payload));
       } else if (msg.type === "RESULT") {
         cleanup();
@@ -102,7 +107,7 @@ function requestWallet(signPageURL, payload) {
 var wallet = {
   manifest: {},
   async signIn(data) {
-    const accounts = await requestWallet(this.manifest.metadata.signPageURL, {
+    const accounts = await requestWallet(this.manifest.metadata, {
       kind: "signIn",
       ...data
     });
@@ -113,13 +118,10 @@ var wallet = {
     return accounts;
   },
   async signInAndSignMessage(data) {
-    const accounts = await requestWallet(
-      this.manifest.metadata.signPageURL,
-      {
-        kind: "signInAndSignMessage",
-        ...data
-      }
-    );
+    const accounts = await requestWallet(this.manifest.metadata, {
+      kind: "signInAndSignMessage",
+      ...data
+    });
     const accountId = accounts[0]?.accountId;
     if (accountId) {
       await window.selector.storage.set(ACCOUNT_ID_STORAGE_KEY, accountId);
@@ -127,7 +129,7 @@ var wallet = {
     return accounts;
   },
   async signOut(_data) {
-    console.log(LOG_PREFIX, "signOut");
+    createLogger(LOG_PREFIX, this.manifest.metadata.debug).debug("signOut");
     await window.selector.storage.remove(ACCOUNT_ID_STORAGE_KEY);
   },
   async getAccounts(_data) {
@@ -140,22 +142,22 @@ var wallet = {
     ];
   },
   async signMessage(params) {
-    return requestWallet(this.manifest.metadata.signPageURL, { kind: "signMessage", ...params });
+    return requestWallet(this.manifest.metadata, { kind: "signMessage", ...params });
   },
   async signAndSendTransaction(params) {
-    return requestWallet(this.manifest.metadata.signPageURL, {
+    return requestWallet(this.manifest.metadata, {
       kind: "signAndSendTransaction",
       ...params
     });
   },
   async signAndSendTransactions(params) {
-    return requestWallet(this.manifest.metadata.signPageURL, {
+    return requestWallet(this.manifest.metadata, {
       kind: "signAndSendTransactions",
       ...params
     });
   },
   async signDelegateActions(params) {
-    return requestWallet(this.manifest.metadata.signPageURL, {
+    return requestWallet(this.manifest.metadata, {
       kind: "signDelegateActions",
       ...params
     });
